@@ -41,8 +41,8 @@
 | 1 | DB/artifacts/runs/approvals + capture + mock workflow + Home/Inbox UI | ✅ DONE |
 | 2 | Memory v1 (FTS5, scopes, supersession, sensitivity, candidates) + Memory Center | ✅ DONE |
 | 3 | Research Radar: providers → dedup → cited synthesis → UI (golden slice LIVE) | ✅ DONE (39/39 tests) |
-| 4 | Feishu CLI connector behind approval | 🔜 NEXT |
-| 5 | Communication assistant | ⬜ |
+| 4 | Feishu CLI connector behind approval (mock-executor tested; real CLI install pending credentials) | ✅ DONE (44/44 tests) |
+| 5 | Communication assistant | 🔜 NEXT |
 | 6 | Food Map | ⬜ |
 | 7 | Life Ledger + fitness | ⬜ |
 | 8 | Form Assistant | ⬜ |
@@ -91,27 +91,40 @@ smoke tests without an HTTP layer.
 - node --test runs .ts sources directly (type stripping) BUT parameter
   properties / enums / namespaces are unsupported — keep classes erasable.
 
-## Next up (Phase 4 — Feishu connector)
+## Next up (Phase 5 — Communication assistant)
 
-1. Check whether `larksuite/cli` (`lark` binary) exists locally; implement
-   `FeishuCliConnector` behind the Connector interface with a MOCK executor for
-   tests; document the real-credential blocker when hit.
-2. `src/host/connectors/feishu.ts`: Connector {id, capabilities(), health(),
-   preview(action), execute(action, approvalId)}; execute() REQUIRES an
-   approved approval id and consumes it via ApprovalService before any CLI call.
-3. Action types: doc.create-from-markdown, doc.update-append, base.row-insert,
-   im.send. Previews rendered as Markdown cards.
-4. Recipe `literature-to-feishu`: build-collection → synthesize → publish
-   (approval-gated step).
-5. Tools: grad_connector_list / grad_feishu_preview / grad_feishu_publish.
-6. Connections page UI: capability cards + health + auth state.
-7. Tests: mocked CLI process; approval enforcement; payload-hash binding;
-   consumed-approval cannot republish.
+1. `src/host/services/communication-service.ts`: draft sessions — input
+   (pasted message or screenshot artifact ref), classification
+   {relationship, scenario, intent, risk} via deterministic keyword rules MVP,
+   context assembly from memory (advisor preferences, project status), reply
+   drafts with tone variants, commitments extraction (regex dates/deadlines).
+2. Drafts are ARTIFACTS (communication-draft kind) bound to the source capture.
+3. Tools: grad_comm_understand {text|artifactId} → analysis card;
+   grad_comm_draft {analysisId?, text, tone?} → draft artifact. NO send tool —
+   sending goes through feishu im.send connector + approval only.
+4. Routes: POST /communication/understand, POST /communication/draft.
+5. Communication page UI: paste box → understanding card → draft editor →
+   "copy" button (no direct send in MVP).
+6. Tests: classification fixtures, no-invented-progress rule (draft may not
+   claim completed work), commitments extraction, artifact binding.
 
-Then Phases 5-9 per docs/DSH_DEVELOPMENT_PLAN.md (communication → food →
-ledger → forms → skill studio), each: service + tools + routes + UI page +
-tests + live verify + commit. Phase 10 audio brief needs a TTS provider choice
-(likely user-input point). Phase 11 WeChat stays feature-flagged OFF.
+Then Phases 6-9 per docs/DSH_DEVELOPMENT_PLAN.md (food → ledger → forms →
+skill studio), each: service + tools + routes + UI page + tests + live verify +
+commit. Phase 10 audio brief needs a TTS provider choice (likely user-input
+point). Phase 11 WeChat stays feature-flagged OFF.
+
+## Phase 4 implementation notes
+
+- Connector interface: capabilities/health/preview/execute; FeishuCliConnector
+  is the first adapter (larksuite/cli argv templates — verify subcommand names
+  against installed CLI during credential-enabled smoke; blocked on install).
+- Exactly-once publishing: connector_events table has UNIQUE(approval_id);
+  duplicate executes are rejected durably even across host restarts.
+- Gate semantics split: workflow engine / execute-tool CONSUMES the approval;
+  connector VERIFIES consumed status + payload hash, records the event, then
+  calls the CLI. Health probe runs before every publish.
+- Real CLI missing on this machine → health shows actionable setup hint;
+  Connections page renders it. No tokens ever touch Graduate OS storage.
 
 ## Known deferred items
 
@@ -123,3 +136,4 @@ tests + live verify + commit. Phase 10 audio brief needs a TTS provider choice
 ## Definition of done reminder
 
 MVP = PRD §18. Do not declare success while any P0 slice is mocked that could run for real locally.
+

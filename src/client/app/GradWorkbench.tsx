@@ -149,15 +149,58 @@ const NAV: Array<{ id: PageId; label: string; enabled: boolean }> = [
   { id: 'life', label: '🍜 Life', enabled: false },
   { id: 'automation', label: '⚙️ Automation', enabled: true },
   { id: 'memory', label: '🧠 Memory', enabled: true },
-  { id: 'connections', label: '🔗 Connections', enabled: false },
+  { id: 'connections', label: '🔗 Connections', enabled: true },
   { id: 'settings', label: '🔧 Settings', enabled: false },
 ]
 
 const PLACEHOLDER: Partial<Record<PageId, { title: string; phase: number; desc: string }>> = {
   communication: { title: 'Communication', phase: 5, desc: 'Advisor message understanding and reply drafting. Drafts only until approved.' },
   life: { title: 'Life', phase: 6, desc: 'Food Map, fitness log, volunteer/activity ledger.' },
-  connections: { title: 'Connections', phase: 4, desc: 'Feishu/Lark first; WeChat behind adapter + feature flag.' },
   settings: { title: 'Settings', phase: 1, desc: 'Workbench preferences, data location, memory write policy.' },
+}
+
+interface ConnectorInfo {
+  id: string
+  label: string
+  actions: string[]
+  notes?: string
+  healthy?: boolean
+  reason?: string
+}
+
+function ConnectionsPage(): ReactElement {
+  const [connectors, setConnectors] = useState<ConnectorInfo[]>([])
+
+  useEffect(() => {
+    void get<{ connectors: ConnectorInfo[] }>('/connectors').then((d) => setConnectors(d.connectors)).catch(() => {})
+  }, [])
+
+  return (
+    <div>
+      <div className="gwb-card">
+        <h3>Connections</h3>
+        <p className="gwb-muted">
+          External systems are reachable only through connectors. Every publish/send/submit action requires explicit
+          approval and is recorded with its approval id.
+        </p>
+      </div>
+      {connectors.map((c) => (
+        <div key={c.id} className="gwb-card">
+          <h3>
+            {c.label}{' '}
+            {c.healthy ? <span className="gwb-pill gwb-ok">ready</span> : <span className="gwb-pill gwb-warn">needs setup</span>}
+          </h3>
+          {c.reason ? <p className="gwb-warn">{c.reason}</p> : null}
+          {c.notes ? <p className="gwb-muted">{c.notes}</p> : null}
+          <div>
+            {c.actions.map((a) => (
+              <span key={a} className="gwb-pill" style={{ marginRight: 6 }}>{a}</span>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
 }
 
 interface CollectionPaper {
@@ -606,6 +649,8 @@ export function GradWorkbench(): ReactElement {
             <AutomationPage runs={runs} />
           ) : page === 'memory' ? (
             <MemoryPage />
+          ) : page === 'connections' ? (
+            <ConnectionsPage />
           ) : placeholder ? (
             <PlaceholderPage page={placeholder} />
           ) : null}

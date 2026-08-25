@@ -6,7 +6,8 @@ import { makeRoutes } from './routes/index.ts'
 import { registerFoundationTools, setToolVersion } from './tools/foundation.ts'
 import { makeMemoryTools } from './tools/memory.ts'
 import { makeResearchTools } from './tools/research.ts'
-import { ECHO_DEMO_WORKFLOW, makeLiteratureRadarWorkflow } from './workflows.ts'
+import { makeConnectorTools } from './tools/connectors.ts'
+import { ECHO_DEMO_WORKFLOW, makeLiteratureRadarWorkflow, makeLiteratureToFeishuWorkflow } from './workflows.ts'
 import type { GradHostContext } from './types.ts'
 
 const PACKAGE_JSON = fileURLToPath(new URL('../package.json', import.meta.url))
@@ -50,6 +51,7 @@ export function apply(ctx: GradHostContext): void {
     const unregisterWorkflows = [
       services.workflows.register(ECHO_DEMO_WORKFLOW),
       services.workflows.register(makeLiteratureRadarWorkflow(services)),
+      services.workflows.register(makeLiteratureToFeishuWorkflow(services)),
     ]
 
     const disposers: Array<() => void> = []
@@ -67,6 +69,7 @@ export function apply(ctx: GradHostContext): void {
       ...registerFoundationTools(ctx.tools, services),
       ...makeMemoryTools(services).map((tool) => ctx.tools.register(tool)),
       ...makeResearchTools(services).map((tool) => ctx.tools.register(tool)),
+      ...makeConnectorTools(services).map((tool) => ctx.tools.register(tool)),
     )
 
     ctx.logger.info(

@@ -210,6 +210,24 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_papers_coll_openalex ON papers(collection_
 CREATE UNIQUE INDEX IF NOT EXISTS idx_papers_coll_s2 ON papers(collection_id, s2_id) WHERE s2_id IS NOT NULL;
 `,
   },
+  {
+    version: 4,
+    name: 'connector-events',
+    sql: `
+CREATE TABLE IF NOT EXISTS connector_events (
+  id TEXT PRIMARY KEY,
+  connector_id TEXT NOT NULL,
+  action_type TEXT NOT NULL,
+  approval_id TEXT NOT NULL UNIQUE,
+  summary TEXT NOT NULL,
+  ok INTEGER,
+  external_ref TEXT,
+  error TEXT,
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_connector_events_time ON connector_events(created_at);
+`,
+  },
 ]
 
 export interface OpenDatabaseOptions {

@@ -6,6 +6,8 @@ import { WorkflowEngine } from './workflow-engine.ts'
 import { CaptureService } from './capture-service.ts'
 import { MemoryService } from './memory-service.ts'
 import { ResearchService } from '../research/index.ts'
+import { ConnectorRegistry } from '../connectors/registry.ts'
+import { FeishuCliConnector } from '../connectors/feishu.ts'
 
 export interface HostServices {
   database: GradDatabase
@@ -15,6 +17,7 @@ export interface HostServices {
   captures: CaptureService
   memory: MemoryService
   research: ResearchService
+  connectors: ConnectorRegistry
   close(): void
 }
 
@@ -27,6 +30,10 @@ export function buildServices(layout: DataLayout): HostServices {
   const captures = new CaptureService(db)
   const memory = new MemoryService(db)
   const research = new ResearchService(db, layout, artifacts)
+
+  const connectors = new ConnectorRegistry()
+  connectors.register(new FeishuCliConnector(db))
+
   return {
     database,
     artifacts,
@@ -35,6 +42,7 @@ export function buildServices(layout: DataLayout): HostServices {
     captures,
     memory,
     research,
+    connectors,
     close() {
       db.close()
     },

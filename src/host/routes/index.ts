@@ -206,6 +206,21 @@ export function makeRoutes(deps: RouteDeps): WebRoute[] {
       }),
     },
 
+    // ── connectors ───────────────────────────────────────────────────────────
+    exact(`${API_PREFIX}/connectors`, routeErrors(async (req, res) => {
+      if (req.method !== 'GET') return void json(res, 405, { ok: false, error: 'method-not-allowed' })
+      const healths = await services.connectors.healthAll()
+      const byId = new Map(healths.map((h) => [h.id, h.health]))
+      json(res, 200, {
+        ok: true,
+        connectors: services.connectors.list().map((c) => ({
+          ...c,
+          healthy: byId.get(c.id)?.ok ?? false,
+          reason: byId.get(c.id)?.reason,
+        })),
+      })
+    })),
+
     // ── memory ───────────────────────────────────────────────────────────────
     exact(`${API_PREFIX}/memory`, routeErrors(async (req, res) => {
       if (req.method === 'GET') {
