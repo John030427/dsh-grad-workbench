@@ -91,27 +91,29 @@ smoke tests without an HTTP layer.
 - node --test runs .ts sources directly (type stripping) BUT parameter
   properties / enums / namespaces are unsupported — keep classes erasable.
 
-## Next up (Phase 5 — Communication assistant)
+## Next up (Phase 6 — Food Map)
 
-1. `src/host/services/communication-service.ts`: draft sessions — input
-   (pasted message or screenshot artifact ref), classification
-   {relationship, scenario, intent, risk} via deterministic keyword rules MVP,
-   context assembly from memory (advisor preferences, project status), reply
-   drafts with tone variants, commitments extraction (regex dates/deadlines).
-2. Drafts are ARTIFACTS (communication-draft kind) bound to the source capture.
-3. Tools: grad_comm_understand {text|artifactId} → analysis card;
-   grad_comm_draft {analysisId?, text, tone?} → draft artifact. NO send tool —
-   sending goes through feishu im.send connector + approval only.
-4. Routes: POST /communication/understand, POST /communication/draft.
-5. Communication page UI: paste box → understanding card → draft editor →
-   "copy" button (no direct send in MVP).
-6. Tests: classification fixtures, no-invented-progress rule (draft may not
-   claim completed work), commitments extraction, artifact binding.
+1. `src/host/services/food-service.ts`: restaurant CRUD on a new table
+   (migration 005: restaurants with status want_to_try/visited/favorite/avoid/
+   unresolved, source refs, tags/cuisines); capture flow creates candidates.
+2. Place resolution behind a provider interface (`PlaceProvider`:
+   searchPlace/geocode/reverseGeocode) with NO vendor wired in MVP —
+   resolution returns `unresolved` candidates requiring user confirmation
+   (never silently pin ambiguous places).
+3. Tools: grad_food_save {name, sourceText?} → candidate/unresolved;
+   grad_food_confirm {restaurantId, addressOrPlaceId} → confirmed pin;
+   grad_food_list {status?, cuisine?, near?}; grad_food_search {query}.
+4. Routes + Life page tab 1 (Food Map): list view + status filters +
+   unresolved queue; map rendering deferred to MapLibre wiring (needs tile
+   style decision — note as P1, list view is the MVP surface).
+5. Tests: save→unresolved→confirm flow; ambiguous input never auto-confirms;
+   filters; source retention.
 
-Then Phases 6-9 per docs/DSH_DEVELOPMENT_PLAN.md (food → ledger → forms →
-skill studio), each: service + tools + routes + UI page + tests + live verify +
-commit. Phase 10 audio brief needs a TTS provider choice (likely user-input
-point). Phase 11 WeChat stays feature-flagged OFF.
+Then Phase 7 Life Ledger (volunteer+fitness share LedgerEntry), Phase 8 Form
+Assistant (Browser-Use adapter seam, recipe storage), Phase 9 Skill Studio
+(recipe compiler over registered skills). Each: service + tools + routes + UI
+tab + tests + commit. Phase 10 audio brief needs a TTS provider choice (likely
+user-input point). Phase 11 WeChat stays feature-flagged OFF.
 
 ## Phase 4 implementation notes
 
