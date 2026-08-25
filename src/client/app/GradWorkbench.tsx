@@ -278,6 +278,110 @@ function ConfirmRow({ r, busy, onConfirm, onDelete }: {
   )
 }
 
+interface LedgerEntryInfo {
+  id: string
+  category: string
+  startAt: string
+  durationMinutes?: number
+  organization?: string
+  activityType?: string
+  note?: string
+}
+
+function LedgerSection(): ReactElement {
+  const [entries, setEntries] = useState<LedgerEntryInfo[]>([])
+  const [summary, setSummary] = useState<{ totalMinutes: number; count: number } | null>(null)
+  const [org, setOrg] = useState('')
+  const [hours, setHours] = useState('3')
+  const [note, setNote] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  const load = useCallback(() => {
+    void get<{ entries: LedgerEntryInfo[]; summary: { totalMinutes: number; count: number } }>('/ledger?category=volunteer')
+      .then((d) => {
+        setEntries(d.entries)
+        setSummary(d.summary)
+      })
+      .catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    load()
+  }, [load])
+
+  const add = async () => {
+    const h = Number(hours)
+    if (!org.trim() || !Number.isFinite(h)) return
+    setBusy(true)
+    try {
+      const start = new Date()
+      await post('/ledger', {
+        category: 'volunteer',
+        startAt: start.toISOString(),
+        durationMinutes: Math.round(h * 60),
+        organization: org.trim(),
+        activityType: 'volunteer',
+        ...(note ? { note } : {}),
+      })
+      setNote('')
+      load()
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div>
+      <div className="gwb-card">
+        <h3>Volunteer hours</h3>
+        {summary ? (
+          <p>
+            Total: <b>{Math.round((summary.totalMinutes / 60) * 10) / 10} h</b> across {summary.count} entries
+          </p>
+        ) : null}
+        <div style={{ display: 'flex', gap: 8 }}>
+          <input className="gwb-input" style={{ flex: 1 }} placeholder="Organization / activity" value={org} onChange={(e) => setOrg(e.target.value)} />
+          <input className="gwb-input" style={{ width: 90 }} value={hours} onChange={(e) => setHours(e.target.value)} />
+          <span className="gwb-muted" style={{ alignSelf: 'center' }}>hours</span>
+        </div>
+        <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+          <input className="gwb-input" style={{ flex: 1 }} placeholder="Note (optional)" value={note} onChange={(e) => setNote(e.target.value)} />
+          <button type="button" className="gwb-btn primary" disabled={busy || !org.trim()} onClick={add}>Log hours</button>
+          <a className="gwb-btn" href="/api/grad/ledger?category=volunteer&format=csv">Export CSV</a>
+        </div>
+      </div>
+
+      <div className="gwb-card">
+        <h3>Recent entries</h3>
+        {entries.length === 0 ? <p className="gwb-muted">No entries yet.</p> : null}
+        {entries.slice(0, 10).map((e) => (
+          <div key={e.id} className="gwb-row">
+            <span className="gwb-pill">{e.category}</span>
+            <span style={{ flex: 1 }}>{e.organization ?? e.note ?? e.activityType}</span>
+            <span className="gwb-muted">{new Date(e.startAt).toLocaleDateString()}</span>
+            {e.durationMinutes !== undefined ? <span className="gwb-pill">{(e.durationMinutes / 60).toFixed(1)} h</span> : null}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function LifePage(): ReactElement {
+  const [tab, setTab] = useState<'food' | 'ledger'>('food')
+  return (
+    <div>
+      <div className="gwb-card">
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button type="button" className={`gwb-btn${tab === 'food' ? ' primary' : ''}`} onClick={() => setTab('food')}>Food Map</button>
+          <button type="button" className={`gwb-btn${tab === 'ledger' ? ' primary' : ''}`} onClick={() => setTab('ledger')}>Ledger</button>
+        </div>
+      </div>
+      {tab === 'food' ? <FoodSection /> : <LedgerSection />}
+    </div>
+  )
+}
+
 interface UnderstandingInfo {
   relationship: string
   scenario: string
@@ -898,7 +1002,7 @@ export function GradWorkbench(): ReactElement {
           ) : page === 'communication' ? (
             <CommunicationPage />
           ) : page === 'life' ? (
-            <FoodSection />
+            <LifePage />
           ) : placeholder ? (
             <PlaceholderPage page={placeholder} />
           ) : null}

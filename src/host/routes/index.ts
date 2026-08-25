@@ -295,6 +295,51 @@ export function makeRoutes(deps: RouteDeps): WebRoute[] {
       }),
     },
 
+    // ── life ledger ──────────────────────────────────────────────────────────
+    exact(`${API_PREFIX}/ledger`, routeErrors(async (req, res) => {
+      if (req.method === 'GET') {
+        const url = new URL(req.url ?? '/', 'http://localhost')
+        const category = url.searchParams.get('category') ?? undefined
+        if (url.searchParams.get('format') === 'csv') {
+          const csv = services.ledger.exportCsv(category as never)
+          res.writeHead(200, { 'content-type': 'text/csv; charset=utf-8' })
+          return void res.end(csv)
+        }
+        return void json(res, 200, {
+          ok: true,
+          entries: services.ledger.list({ category: category as never }),
+          summary: services.ledger.summary({ category: category as never }),
+        })
+      }
+      if (req.method === 'POST') {
+        const body = (await readJsonBody(req)) as Record<string, unknown>
+        try {
+          const entry =
+            body.category === 'fitness'
+              ? services.ledger.addWorkout(body as never)
+              : services.ledger.add(body as never)
+          return void json(res, 201, { ok: true, entry })
+        } catch (err) {
+          const code = (err as { code?: string }).code
+          if (code === 'INVALID_INPUT') {
+            return void json(res, 400, { ok: false, error: String(err instanceof Error ? err.message : err) })
+          }
+          throw err
+        }
+      }
+      json(res, 405, { ok: false, error: 'method-not-allowed' })
+    })),
+    {
+      kind: 'prefix',
+      path: `${API_PREFIX}/ledger/summary`,
+      handler: routeErrors((req, res) => {
+        if (req.method !== 'GET') return void json(res, 405, { ok: false, error: 'method-not-allowed' })
+        const url = new URL(req.url ?? '/', 'http://localhost')
+        const category = url.searchParams.get('category') ?? undefined
+        json(res, 200, { ok: true, summary: services.ledger.summary({ category: category as never }) })
+      }),
+    },
+
     // ── memory ───────────────────────────────────────────────────────────────
     exact(`${API_PREFIX}/memory`, routeErrors(async (req, res) => {
       if (req.method === 'GET') {

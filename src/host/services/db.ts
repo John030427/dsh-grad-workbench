@@ -255,6 +255,40 @@ CREATE TABLE IF NOT EXISTS restaurants (
 CREATE INDEX IF NOT EXISTS idx_restaurants_status ON restaurants(status, first_saved_at);
 `,
   },
+  {
+    version: 6,
+    name: 'life-ledger',
+    sql: `
+CREATE TABLE IF NOT EXISTS ledger_entries (
+  id TEXT PRIMARY KEY,
+  category TEXT NOT NULL,
+  start_at TEXT NOT NULL,
+  end_at TEXT,
+  duration_minutes INTEGER,
+  organization TEXT,
+  activity_type TEXT,
+  note TEXT,
+  evidence_refs TEXT NOT NULL DEFAULT '[]',
+  source TEXT NOT NULL DEFAULT 'manual',
+  verification TEXT NOT NULL DEFAULT 'self',
+  created_at TEXT NOT NULL,
+  deleted_at TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_ledger_category ON ledger_entries(category, start_at);
+
+CREATE TABLE IF NOT EXISTS fitness_sets (
+  id TEXT PRIMARY KEY,
+  ledger_entry_id TEXT NOT NULL REFERENCES ledger_entries(id),
+  exercise TEXT NOT NULL,
+  sets INTEGER,
+  reps INTEGER,
+  weight_kg REAL,
+  duration_minutes INTEGER,
+  notes TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_fitness_sets_entry ON fitness_sets(ledger_entry_id);
+`,
+  },
 ]
 
 export interface OpenDatabaseOptions {
