@@ -146,7 +146,7 @@ const NAV: Array<{ id: PageId; label: string; enabled: boolean }> = [
   { id: 'home', label: '🏠 Home', enabled: true },
   { id: 'research', label: '🔬 Research', enabled: true },
   { id: 'communication', label: '💬 Communication', enabled: true },
-  { id: 'life', label: '🍜 Life', enabled: false },
+  { id: 'life', label: '🍜 Life', enabled: true },
   { id: 'automation', label: '⚙️ Automation', enabled: true },
   { id: 'memory', label: '🧠 Memory', enabled: true },
   { id: 'connections', label: '🔗 Connections', enabled: true },
@@ -154,8 +154,128 @@ const NAV: Array<{ id: PageId; label: string; enabled: boolean }> = [
 ]
 
 const PLACEHOLDER: Partial<Record<PageId, { title: string; phase: number; desc: string }>> = {
-  life: { title: 'Life', phase: 6, desc: 'Food Map, fitness log, volunteer/activity ledger.' },
   settings: { title: 'Settings', phase: 1, desc: 'Workbench preferences, data location, memory write policy.' },
+}
+
+interface RestaurantInfo {
+  id: string
+  name: string
+  status: string
+  address?: string
+  cuisines?: string[]
+  notes?: string
+  sourceTexts?: string[]
+}
+
+function FoodSection(): ReactElement {
+  const [items, setItems] = useState<RestaurantInfo[]>([])
+  const [name, setName] = useState('')
+  const [note, setNote] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  const load = useCallback(() => {
+    void get<{ restaurants: RestaurantInfo[] }>('/food/restaurants').then((d) => setItems(d.restaurants)).catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    load()
+  }, [load])
+
+  const add = async () => {
+    if (!name.trim()) return
+    setBusy(true)
+    try {
+      await post('/food/restaurants', { name: name.trim(), ...(note ? { note } : {}) })
+      setName('')
+      setNote('')
+      load()
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const act = async (id: string, action: 'confirm' | 'delete' | 'status', extra?: Record<string, unknown>) => {
+    setBusy(true)
+    try {
+      await post(`/food/restaurants/${id}/${action}`, extra ?? {})
+      load()
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const unresolved = items.filter((r) => r.status === 'unresolved')
+  const confirmed = items.filter((r) => r.status !== 'unresolved')
+
+  return (
+    <div>
+      <div className="gwb-card">
+        <h3>Save a restaurant</h3>
+        <p className="gwb-muted">Captures stay <b>unresolved</b> until you confirm the place — ambiguous locations are never auto-pinned.</p>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <input className="gwb-input" style={{ flex: 1 }} placeholder="Restaurant name…" value={name} onChange={(e) => setName(e.target.value)} />
+          <input className="gwb-input" style={{ flex: 1 }} placeholder="Note (who recommended / why)" value={note} onChange={(e) => setNote(e.target.value)} />
+        </div>
+        <div style={{ marginTop: 8 }}>
+          <button type="button" className="gwb-btn primary" disabled={busy || !name.trim()} onClick={add}>Add</button>
+        </div>
+      </div>
+
+      {unresolved.length > 0 ? (
+        <div className="gwb-card">
+          <h3>Unresolved queue ({unresolved.length}) — needs your confirmation</h3>
+          {unresolved.map((r) => (
+            <ConfirmRow key={r.id} r={r} busy={busy} onConfirm={act} onDelete={act} />
+          ))}
+        </div>
+      ) : null}
+
+      <div className="gwb-card">
+        <h3>Confirmed pins ({confirmed.length})</h3>
+        {confirmed.length === 0 ? (
+          <p className="gwb-muted">Nothing pinned yet.</p>
+        ) : (
+          confirmed.map((r) => (
+            <div key={r.id} className="gwb-row">
+              <span className="gwb-pill">{r.status}</span>
+              <span style={{ flex: 1 }}>{r.name}</span>
+              {r.address ? <span className="gwb-muted">{r.address}</span> : null}
+              <button type="button" className="gwb-btn" disabled={busy} onClick={() => act(r.id, 'status', { status: 'visited' })}>
+                Mark visited
+              </button>
+              <button type="button" className="gwb-btn danger" disabled={busy} onClick={() => act(r.id, 'delete')}>Delete</button>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  )
+}
+
+function ConfirmRow({ r, busy, onConfirm, onDelete }: {
+  r: RestaurantInfo
+  busy: boolean
+  onConfirm: (id: string, action: 'confirm' | 'delete', extra?: Record<string, unknown>) => void
+  onDelete: (id: string, action: 'confirm' | 'delete') => void
+}): ReactElement {
+  const [address, setAddress] = useState('')
+  return (
+    <div className="gwb-row">
+      <span className="gwb-pill gwb-warn">{r.status}</span>
+      <span style={{ flex: 1 }}>{r.name}</span>
+      <input
+        className="gwb-input"
+        style={{ width: 220 }}
+        placeholder="Confirm address…"
+        value={address}
+        onChange={(e) => setAddress(e.target.value)}
+      />
+      <button type="button" className="gwb-btn primary" disabled={busy || !address.trim()} onClick={() => onConfirm(r.id, 'confirm', { address })}>
+        Confirm pin
+      </button>
+      <button type="button" className="gwb-btn danger" disabled={busy} onClick={() => onDelete(r.id, 'delete')}>Delete</button>
+    </div>
+  )
 }
 
 interface UnderstandingInfo {
@@ -777,6 +897,8 @@ export function GradWorkbench(): ReactElement {
             <ConnectionsPage />
           ) : page === 'communication' ? (
             <CommunicationPage />
+          ) : page === 'life' ? (
+            <FoodSection />
           ) : placeholder ? (
             <PlaceholderPage page={placeholder} />
           ) : null}

@@ -243,6 +243,58 @@ export function makeRoutes(deps: RouteDeps): WebRoute[] {
       json(res, 200, { ok: true, drafts: result.drafts, contextUsed: result.contextUsed, artifactId: saved.artifactId })
     })),
 
+    // ── food ─────────────────────────────────────────────────────────────────
+    exact(`${API_PREFIX}/food/restaurants`, routeErrors(async (req, res) => {
+      if (req.method === 'GET') {
+        const url = new URL(req.url ?? '/', 'http://localhost')
+        return void json(res, 200, {
+          ok: true,
+          restaurants: services.food.list({
+            status: (url.searchParams.get('status') ?? undefined) as never,
+            query: url.searchParams.get('q') ?? undefined,
+          }),
+        })
+      }
+      if (req.method === 'POST') {
+        const body = (await readJsonBody(req)) as { name?: string; note?: string; cuisine?: string; sourceText?: string }
+        if (!body.name) return void json(res, 400, { ok: false, error: 'name-required' })
+        const r = services.food.save(body as { name: string })
+        return void json(res, 201, { ok: true, restaurant: r })
+      }
+      json(res, 405, { ok: false, error: 'method-not-allowed' })
+    })),
+    {
+      kind: 'prefix',
+      path: `${API_PREFIX}/food/restaurants`,
+      handler: routeErrors(async (req, res) => {
+        if (req.method !== 'POST') return void json(res, 405, { ok: false, error: 'method-not-allowed' })
+        const suffix = pathnameSuffix(req, `${API_PREFIX}/food/restaurants/`)
+        const [id, action] = suffix.split('/')
+        if (!id || !action) return void json(res, 400, { ok: false, error: 'id-and-action-required' })
+        const body = (await readJsonBody(req)) as Record<string, unknown>
+        switch (action) {
+          case 'confirm':
+            try {
+              return void json(res, 200, { ok: true, restaurant: services.food.confirm(id!, body) })
+            } catch (err) {
+              const code = (err as { code?: string }).code
+              if (code === 'INVALID_INPUT') return void json(res, 400, { ok: false, error: String(err instanceof Error ? err.message : err) })
+              throw err
+            }
+          case 'status':
+            return void json(res, 200, {
+              ok: true,
+              restaurant: services.food.setStatus(id!, body.status as never, body.rating as number | undefined),
+            })
+          case 'delete':
+            services.food.delete(id!)
+            return void json(res, 200, { ok: true })
+          default:
+            json(res, 404, { ok: false, error: 'not-found' })
+        }
+      }),
+    },
+
     // ── memory ───────────────────────────────────────────────────────────────
     exact(`${API_PREFIX}/memory`, routeErrors(async (req, res) => {
       if (req.method === 'GET') {

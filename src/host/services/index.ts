@@ -6,6 +6,7 @@ import { WorkflowEngine } from './workflow-engine.ts'
 import { CaptureService } from './capture-service.ts'
 import { MemoryService } from './memory-service.ts'
 import { CommunicationService } from './communication-service.ts'
+import { FoodService } from './food-service.ts'
 import { ResearchService } from '../research/index.ts'
 import { ConnectorRegistry } from '../connectors/registry.ts'
 import { FeishuCliConnector } from '../connectors/feishu.ts'
@@ -18,6 +19,7 @@ export interface HostServices {
   captures: CaptureService
   memory: MemoryService
   communication: CommunicationService
+  food: FoodService
   research: ResearchService
   connectors: ConnectorRegistry
   close(): void
@@ -32,6 +34,7 @@ export function buildServices(layout: DataLayout): HostServices {
   const captures = new CaptureService(db)
   const memory = new MemoryService(db)
   const communication = new CommunicationService(artifacts, memory)
+  const food = new FoodService(db)
   const research = new ResearchService(db, layout, artifacts)
 
   const connectors = new ConnectorRegistry()
@@ -45,6 +48,7 @@ export function buildServices(layout: DataLayout): HostServices {
     captures,
     memory,
     communication,
+    food,
     research,
     connectors,
     close() {

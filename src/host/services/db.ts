@@ -228,6 +228,33 @@ CREATE TABLE IF NOT EXISTS connector_events (
 CREATE INDEX IF NOT EXISTS idx_connector_events_time ON connector_events(created_at);
 `,
   },
+  {
+    version: 5,
+    name: 'restaurants',
+    sql: `
+CREATE TABLE IF NOT EXISTS restaurants (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  aliases TEXT NOT NULL DEFAULT '[]',
+  address TEXT,
+  lat REAL,
+  lng REAL,
+  city TEXT,
+  source_refs TEXT NOT NULL DEFAULT '[]',
+  source_texts TEXT NOT NULL DEFAULT '[]',
+  tags TEXT NOT NULL DEFAULT '[]',
+  cuisines TEXT NOT NULL DEFAULT '[]',
+  price_band TEXT,
+  status TEXT NOT NULL DEFAULT 'unresolved',
+  rating_by_user INTEGER,
+  notes TEXT,
+  first_saved_at TEXT NOT NULL,
+  last_visited_at TEXT,
+  deleted_at TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_restaurants_status ON restaurants(status, first_saved_at);
+`,
+  },
 ]
 
 export interface OpenDatabaseOptions {
