@@ -128,6 +128,21 @@ user-input point). Phase 11 WeChat stays feature-flagged OFF.
 - Real CLI missing on this machine → health shows actionable setup hint;
   Connections page renders it. No tokens ever touch Graduate OS storage.
 
+## MVP definition-of-done review (PRD §18)
+
+- [x] Installs into isolated `grad` DSH profile without forking core
+- [x] Native DSH agent/session usable; grad tools callable by the agent (headless verified)
+- [x] All P0 screens reachable through one coherent shell (single conversation.view tab)
+- [x] Demo A research: live OpenAlex run → dedup → cited report artifact → provenance
+- [x] Demo B communication: understand → draft (no invented progress) — no auto-send
+- [x] Demo C food: capture → unresolved queue → user-confirmed pin with source
+- [x] Demo D ledger: volunteer hours + totals + CSV export; fitness shares the substrate
+- [x] Demo E automation: form inspect/propose/fill/submit behind two approvals (mock adapter)
+- [x] Memory used by workflows is inspectable and correctable
+- [x] Every external write gated by approval; consumed approvals cannot re-fire
+- [x] Workflow run history explains steps/tools/approvals/artifacts
+- [x] 63 automated tests pass on Windows; README reproduces setup from clean clone
+
 ## Known deferred items
 
 - LLM narrative synthesis (currently deterministic metadata-level reports) —
@@ -138,6 +153,7 @@ user-input point). Phase 11 WeChat stays feature-flagged OFF.
 ## Definition of done reminder
 
 MVP = PRD §18. Do not declare success while any P0 slice is mocked that could run for real locally.
+
 
 
 
