@@ -2,54 +2,76 @@
 
 > **Graduate OS / 硕博工作台** — a local-first DeepSeek Harness workbench that turns graduate-school tasks into composable Skills, Workflows, Memory and Connectors.
 
-## Product thesis
+## Status
 
-The product does **not** try to answer “which LLM is globally best for this prompt?”.  
-It first identifies the **task/workflow**, then lets each Skill declare the capabilities, tools, memory and model policy it needs.
+Implemented per `docs/DSH_DEVELOPMENT_PLAN.md` phases 0–9 plus the seams for
+10–11; see `docs/PROGRESS.md` for the live checklist. **63/63 automated tests
+pass** (`npm test`) on Windows + Node 24 against DSH `@deepseek-ai/dsh@0.1.1-rc.2`.
 
-```text
-User / Feishu / WeChat / file / screenshot
-                    │
-              Universal Inbox
-                    │
-               Task Router
-                    │
-     ┌──────────────┼──────────────┐
- Research       Communication      Life       Automation
-     │                │             │              │
-     └────────────── Skills / Workflow ────────────┘
-                         │
-       ┌─────────────────┼─────────────────┐
-       Memory         Connectors       Model Policy
-                         │
-                      DSH Core
+| Space | What works today |
+|---|---|
+| Research | Latest-papers radar over OpenAlex (+S2 enrichment), DOI/OA/S2/fingerprint dedup, deterministic evidence-tagged cited report, Feishu publish behind approval |
+| Communication | Advisor-message understanding (scenario/intent/risk/commitments), tone-varied reply drafts with no-invented-progress placeholders, drafts saved as artifacts |
+| Life | Food Map capture → unresolved queue → user-confirmed pins; volunteer hours ledger with month/org totals and CSV export; workout logging with per-exercise sets and last-workout lookup |
+| Automation | Universal inbox + router, workflow run history, Skill Studio recipe composition over atomic skills, Form Assistant vault + two-gate fill/submit |
+| Foundations | Scoped memory (FTS5+CJK fallback, candidates, supersession, sensitivity), approval service (payload-hash bound, single-consume), artifact store (sha256), connector registry |
+
+Known deferred items (require user decisions): TTS provider for audio files,
+real Feishu credentials for live publish smoke, WeChat bridge endpoint. All are
+documented in `docs/PROGRESS.md` § Known deferred items.
+
+## Install (isolated `grad` profile)
+
+```powershell
+# 1. clone
+git clone https://github.com/John030427/dsh-grad-workbench C:\Users\Administrator\Projects\dsh-grad-workbench
+cd C:\Users\Administrator\Projects\dsh-grad-workbench
+npm install && npm run build && npm test
+
+# 2. profile (~\.dsh\profiles\grad\package.json)
+{
+  "name": "dsh-profile-grad",
+  "private": true,
+  "dsh": { "profile": { "bundles": [
+    "@deepseek-ai/dsh-base", "@deepseek-ai/dsh-web-app", "dsh-grad-workbench"
+  ] } },
+  "dependencies": {
+    "dsh-grad-workbench": "link:C:/Users/Administrator/Projects/dsh-grad-workbench"
+  }
+}
+# junction: ~\.dsh\profiles\grad\node_modules\dsh-grad-workbench -> repo dir
+
+# 3. boot + verify
+node <dsh-checkout>\node_modules\@deepseek-ai\dsh\lib\bin.js --profile grad --port 3081 --no-open
+node scripts/smoke.mjs 3081
 ```
 
-## MVP spaces
+Headless agent smoke uses the same bin with
+`--profile grad-headless "<task mentioning grad_* tools>"`; that profile adds
+the `dsh-webserver-shim` bundle so HTTP-less runs still load every tool.
 
-- **Research** — Latest-50 literature radar, paper collections, synthesis with citations, Feishu publishing, audio brief.
-- **Communication** — advisor/teacher message understanding, reply drafting, progress/meeting/defense communication.
-- **Life** — Food Map, Fitness Log, Volunteer/Activity Ledger.
-- **Automation** — Form Assistant, Skill Studio, reusable workflow recipes.
+## Architecture in one screen
 
-## Core platforms
+```text
+input → grad_capture → task router → Workflow (steps = skills)
+      → tools + scoped Memory + model policy → Artifact (sha256)
+      → ApprovalService gate when side effects exist → Connector (Feishu CLI)
+Host owns SQLite/artifacts/runs/approvals/memory; client is a projection.
+```
 
-- **DSH-native**: keep the native Agent / Session / Tool pipeline. Do not fork DSH core.
-- **Local-first**: SQLite + artifact workspace; explicit scopes and provenance for memory.
-- **Connector-first**: Feishu/Lark first-class; WeChat behind an adapter/feature flag; future Slack/Telegram/etc.
-- **Human approval for side effects**: sending messages, submitting forms, publishing, deleting, overwriting and other irreversible actions always require explicit approval.
-- **Traceable workflows**: every workflow run records inputs, tool calls, artifacts, model policy, sources and side effects.
+- Host: `src/host` — services, research providers, connectors, tools (`grad_*`),
+  routes `/api/grad/*`.
+- Client: `src/client` — one session-view tab「硕博工作台」(Home, Research,
+  Communication, Life, Automation, Memory, Connections).
+- Skills: `src/host/skills/catalog.ts` + Skill Studio compiler.
+- Contracts & compatibility facts: `docs/COMPATIBILITY.md`. Resumable
+  engineering log: `docs/PROGRESS.md`.
 
-## Documents
+## Commands
 
-- `docs/MVP_PRD.md` — product definition and MVP scope.
-- `docs/DSH_DEVELOPMENT_PLAN.md` — implementation architecture, phases, acceptance criteria and tests.
-- `docs/RESEARCH_REFERENCES.md` — reference projects and what to borrow / not borrow.
-- `GOAL_PROMPT.md` — long-running development prompt for DSH/Cursor/Codex-style agents.
-
-## Working name
-
-Repository: `dsh-grad-workbench`  
-Product: **Graduate OS / 硕博工作台**
-
-The name can change later without changing the product architecture.
+```bash
+npm run typecheck   # tsc --noEmit
+npm run build       # lib/index.js (host) + lib/client.js (browser bundle)
+npm test            # node --test across unit + contract + integration
+node scripts/smoke.mjs 3081   # probe a running grad instance
+```

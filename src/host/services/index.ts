@@ -10,6 +10,7 @@ import { FoodService } from './food-service.ts'
 import { LedgerService } from './ledger-service.ts'
 import { FormService } from './form-service.ts'
 import { SkillStudioService } from './skill-studio.ts'
+import { AudioBriefService } from './audio-brief.ts'
 import { ResearchService } from '../research/index.ts'
 import { ConnectorRegistry } from '../connectors/registry.ts'
 import { FeishuCliConnector } from '../connectors/feishu.ts'
@@ -26,6 +27,7 @@ export interface HostServices {
   ledger: LedgerService
   forms: FormService
   studio: SkillStudioService
+  audio: AudioBriefService
   research: ResearchService
   connectors: ConnectorRegistry
   close(): void
@@ -44,6 +46,7 @@ export function buildServices(layout: DataLayout): HostServices {
   const ledger = new LedgerService(db)
   const forms = new FormService(db)
   const research = new ResearchService(db, layout, artifacts)
+  const audio = new AudioBriefService(artifacts)
   const connectors = new ConnectorRegistry()
   connectors.register(new FeishuCliConnector(db))
   const studio = new SkillStudioService({
@@ -58,6 +61,7 @@ export function buildServices(layout: DataLayout): HostServices {
     ledger,
     forms,
     studio: undefined as never,
+    audio,
     research,
     connectors,
     close: () => {},
@@ -75,6 +79,7 @@ export function buildServices(layout: DataLayout): HostServices {
     ledger,
     forms,
     studio,
+    audio,
     research,
     connectors,
     close() {
