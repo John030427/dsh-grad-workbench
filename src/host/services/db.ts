@@ -166,6 +166,50 @@ CREATE TABLE IF NOT EXISTS projects (
 CREATE VIRTUAL TABLE IF NOT EXISTS memory_fts USING fts5(memory_id UNINDEXED, content);
 `,
   },
+  {
+    version: 3,
+    name: 'research-collections',
+    sql: `
+CREATE TABLE IF NOT EXISTS paper_collections (
+  id TEXT PRIMARY KEY,
+  topic TEXT NOT NULL,
+  query_spec TEXT NOT NULL,
+  requested_count INTEGER NOT NULL,
+  complete INTEGER NOT NULL DEFAULT 0,
+  notes TEXT,
+  created_at TEXT NOT NULL,
+  deleted_at TEXT
+);
+
+CREATE TABLE IF NOT EXISTS papers (
+  id TEXT PRIMARY KEY,
+  collection_id TEXT NOT NULL REFERENCES paper_collections(id),
+  title TEXT NOT NULL,
+  authors TEXT NOT NULL DEFAULT '[]',
+  year INTEGER,
+  date TEXT,
+  venue TEXT,
+  doi TEXT,
+  openalex_id TEXT,
+  s2_id TEXT,
+  citation_count INTEGER,
+  open_access INTEGER,
+  abstract_available INTEGER NOT NULL DEFAULT 0,
+  abstract_text TEXT,
+  relevance_score REAL,
+  theme TEXT,
+  evidence_level TEXT NOT NULL DEFAULT 'metadata',
+  fingerprint TEXT NOT NULL,
+  selected INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_papers_collection ON papers(collection_id, year);
+CREATE INDEX IF NOT EXISTS idx_papers_fingerprint ON papers(fingerprint);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_papers_coll_doi ON papers(collection_id, doi) WHERE doi IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_papers_coll_openalex ON papers(collection_id, openalex_id) WHERE openalex_id IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_papers_coll_s2 ON papers(collection_id, s2_id) WHERE s2_id IS NOT NULL;
+`,
+  },
 ]
 
 export interface OpenDatabaseOptions {

@@ -1,0 +1,65 @@
+{
+  "meta": { "count": 42, "db_response_time_ms": 50 },
+  "results": [
+    {
+      "id": "https://openalex.org/W1",
+      "doi": "https://doi.org/10.1000/agent-memory-survey",
+      "display_name": "A Survey of Memory in LLM Agents",
+      "publication_year": 2025,
+      "publication_date": "2025-03-01",
+      "cited_by_count": 120,
+      "open_access": { "is_oa": true },
+      "primary_location": { "source": { "display_name": "Journal of AI Research" } },
+      "authorships": [
+        { "author": { "display_name": "Alice Chen" } },
+        { "author": { "display_name": "Bob Diaz" } }
+      ],
+      "abstract_inverted_index": { "Memory": [0, 6], "is": [1], "central": [2], "to": [3], "agents": [4], "We": [5], "survey": [7], "approaches": [8] },
+      "relevance_score": 91.2
+    },
+    {
+      "id": "https://openalex.org/W2",
+      "doi": "https://DOI.org/10.1000/AGENT-MEMORY-SURVEY",
+      "display_name": "A Survey of Memory in LLM Agents",
+      "publication_year": 2025,
+      "cited_by_count": 118,
+      "authorships": [{ "author": { "display_name": "Alice Chen" } }],
+      "relevance_score": 88.0
+    },
+    {
+      "id": "https://openalex.org/W3",
+      "display_name": "Episodic Memory for Robots",
+      "publication_year": 2024,
+      "cited_by_count": 30,
+      "authorships": [{ "author": { "display_name": "Cara Evs" } }],
+      "relevance_score": 40.1
+    },
+    {
+      "id": "https://openalex.org/W4",
+      "display_name": "Retrieval-Augmented Generation Revisited",
+      "publication_year": 2025,
+      "publication_date": "2025-06-15",
+      "cited_by_count": 75,
+      "primary_location": { "source": { "display_name": "NeurIPS" } },
+      "authorships": [{ "author": { "display_name": "Dan Wu" } }, { "author": { "display_name": "Eli Fox" } }],
+      "abstract_inverted_index": { "Retrieval": [0], "augmented": [1], "generation": [2], "remains": [3], "effective": [4] },
+      "relevance_score": 80.5
+    },
+    {
+      "id": "W5",
+      "display_name": "Retrieval-Augmented Generation Revisited",
+      "publication_year": 2025,
+      "cited_by_count": 70,
+      "authorships": [{ "author": { "display_name": "Dan Wu" } }],
+      "relevance_score": 79.0
+    },
+    {
+      "id": "https://openalex.org/W6",
+      "display_name": "Vector Stores for Agent State",
+      "publication_year": 2023,
+      "cited_by_count": 12,
+      "authorships": [],
+      "relevance_score": 10.0
+    }
+  ]
+}

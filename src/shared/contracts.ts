@@ -201,6 +201,7 @@ export type Paper = {
   citationCount?: number
   openAccess?: boolean
   abstractAvailable: boolean
+  abstractText?: string
   relevanceScore?: number
   theme?: string
   evidenceLevel: EvidenceLevel
@@ -213,6 +214,8 @@ export type PaperCollection = {
   querySpec: Record<string, unknown>
   requestedCount: number
   papers: Paper[]
+  /** Unique candidates found before cutting to requestedCount. */
+  poolSize?: number
   createdAt: string
   complete: boolean
   notes?: string

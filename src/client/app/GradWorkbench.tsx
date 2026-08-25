@@ -144,7 +144,7 @@ type PageId = 'home' | 'research' | 'communication' | 'life' | 'automation' | 'm
 
 const NAV: Array<{ id: PageId; label: string; enabled: boolean }> = [
   { id: 'home', label: '🏠 Home', enabled: true },
-  { id: 'research', label: '🔬 Research', enabled: false },
+  { id: 'research', label: '🔬 Research', enabled: true },
   { id: 'communication', label: '💬 Communication', enabled: false },
   { id: 'life', label: '🍜 Life', enabled: false },
   { id: 'automation', label: '⚙️ Automation', enabled: true },
@@ -154,11 +154,119 @@ const NAV: Array<{ id: PageId; label: string; enabled: boolean }> = [
 ]
 
 const PLACEHOLDER: Partial<Record<PageId, { title: string; phase: number; desc: string }>> = {
-  research: { title: 'Research', phase: 3, desc: 'Latest-50 literature radar → cited synthesis → Feishu publish → audio brief.' },
   communication: { title: 'Communication', phase: 5, desc: 'Advisor message understanding and reply drafting. Drafts only until approved.' },
   life: { title: 'Life', phase: 6, desc: 'Food Map, fitness log, volunteer/activity ledger.' },
   connections: { title: 'Connections', phase: 4, desc: 'Feishu/Lark first; WeChat behind adapter + feature flag.' },
   settings: { title: 'Settings', phase: 1, desc: 'Workbench preferences, data location, memory write policy.' },
+}
+
+interface CollectionPaper {
+  id: string
+  title: string
+  authors: string[]
+  year?: number
+  venue?: string
+  citationCount?: number
+  evidenceLevel: string
+}
+
+function ResearchPage(): ReactElement {
+  const [topic, setTopic] = useState('LLM agent memory')
+  const [count, setCount] = useState(50)
+  const [since, setSince] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [papers, setPapers] = useState<CollectionPaper[]>([])
+  const [collectionId, setCollectionId] = useState<string | null>(null)
+  const [note, setNote] = useState<string | null>(null)
+  const [complete, setComplete] = useState<boolean | null>(null)
+  const [report, setReport] = useState<string | null>(null)
+
+  const run = async () => {
+    setBusy(true)
+    setError(null)
+    setPapers([])
+    setReport(null)
+    setCollectionId(null)
+    try {
+      const data = await post<{ collectionId: string; papers: CollectionPaper[]; complete: boolean; note?: string }>(
+        '/research/collections',
+        { topic: topic.trim(), count, ...(since ? { since } : {}) },
+      )
+      setPapers(data.papers ?? [])
+      setCollectionId(data.collectionId)
+      setComplete(data.complete)
+      setNote(data.note ?? null)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const synthesizeNow = async () => {
+    if (!collectionId) return
+    setBusy(true)
+    try {
+      const r = await post<{ artifactId: string }>(`/research/collections/${collectionId}/synthesize`, {})
+      const art = await get<{ content: string }>(`/artifacts/${r.artifactId}`)
+      setReport(art.content)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div>
+      <div className="gwb-card">
+        <h3>Latest Literature Radar</h3>
+        <p className="gwb-muted">OpenAlex discovery → S2 enrichment → DOI/OA/S2 dedup → relevance+recency rank. Evidence-tagged deterministic report.</p>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <input className="gwb-input" style={{ flex: 2, minWidth: 200 }} value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="Topic" />
+          <input className="gwb-input" style={{ flex: 0, width: 80 }} type="number" min={5} max={200} value={count} onChange={(e) => setCount(Number(e.target.value))} />
+          <input className="gwb-input" style={{ flex: 0, width: 110 }} value={since} onChange={(e) => setSince(e.target.value)} placeholder="since (year)" />
+          <button type="button" className="gwb-btn primary" disabled={busy || !topic.trim()} onClick={run}>
+            {busy ? 'Collecting…' : 'Collect'}
+          </button>
+        </div>
+        {error ? <p className="gwb-bad">{error}</p> : null}
+        {note ? <p className="gwb-warn">{note}</p> : null}
+        {complete === false && papers.length > 0 ? (
+          <p className="gwb-warn">Partial corpus — provider limits. Results shown honestly, nothing fabricated.</p>
+        ) : null}
+      </div>
+
+      {papers.length > 0 ? (
+        <div className="gwb-card">
+          <h3>Papers ({papers.length})</h3>
+          {papers.map((p) => (
+            <div key={p.id} className="gwb-row">
+              <span className="gwb-pill">{p.evidenceLevel === 'metadata' ? '[M]' : '[A]'}</span>
+              <span style={{ flex: 1 }}>{p.title}</span>
+              <span className="gwb-muted">{p.year ?? ''}</span>
+              <span className="gwb-muted">{p.citationCount !== undefined ? `${p.citationCount} cites` : ''}</span>
+            </div>
+          ))}
+          {collectionId ? (
+            <div style={{ marginTop: 10 }}>
+              <button type="button" className="gwb-btn primary" disabled={busy} onClick={synthesizeNow}>
+                Generate cited report
+              </button>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      {report ? (
+        <div className="gwb-card">
+          <h3>Report preview</h3>
+          <pre className="gwb-mono" style={{ whiteSpace: 'pre-wrap' }}>{report.slice(0, 4000)}</pre>
+        </div>
+      ) : null}
+    </div>
+  )
 }
 
 function MemoryPage(): ReactElement {
@@ -492,6 +600,8 @@ export function GradWorkbench(): ReactElement {
         <main className="gwb-content">
           {page === 'home' ? (
             <HomePage health={health} runs={runs} approvals={approvals} captures={captures} onChanged={refresh} />
+          ) : page === 'research' ? (
+            <ResearchPage />
           ) : page === 'automation' ? (
             <AutomationPage runs={runs} />
           ) : page === 'memory' ? (

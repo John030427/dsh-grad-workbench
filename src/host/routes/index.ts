@@ -150,6 +150,62 @@ export function makeRoutes(deps: RouteDeps): WebRoute[] {
       }),
     },
 
+    // ── research ─────────────────────────────────────────────────────────────
+    exact(`${API_PREFIX}/research/collections`, routeErrors(async (req, res) => {
+      if (req.method === 'GET') {
+        return void json(res, 200, { ok: true, collections: services.research.list() })
+      }
+      if (req.method === 'POST') {
+        const body = (await readJsonBody(req)) as { topic?: string; count?: number; since?: string }
+        if (!body.topic) return void json(res, 400, { ok: false, error: 'topic-required' })
+        const collection = await services.research.latest({
+          topic: body.topic,
+          count: body.count,
+          since: body.since,
+        })
+        return void json(res, 200, {
+          ok: true,
+          collectionId: collection.id,
+          delivered: collection.papers.length,
+          requested: collection.requestedCount,
+          complete: collection.complete,
+          note: collection.notes,
+          papers: collection.papers.map((p) => ({
+            id: p.id,
+            title: p.title,
+            authors: p.authors.slice(0, 4),
+            year: p.year,
+            venue: p.venue,
+            citationCount: p.citationCount,
+            evidenceLevel: p.evidenceLevel,
+          })),
+        })
+      }
+      json(res, 405, { ok: false, error: 'method-not-allowed' })
+    })),
+    {
+      kind: 'prefix',
+      path: `${API_PREFIX}/research/collections`,
+      handler: routeErrors(async (req, res) => {
+        if (req.method !== 'GET' && req.method !== 'POST') {
+          return void json(res, 405, { ok: false, error: 'method-not-allowed' })
+        }
+        const suffix = pathnameSuffix(req, `${API_PREFIX}/research/collections/`)
+        const [id, action] = suffix.split('/')
+        if (!id) return void json(res, 400, { ok: false, error: 'collection-id-required' })
+
+        if (!action && req.method === 'GET') {
+          const collection = services.research.get(id!)
+          return void json(res, 200, { ok: true, found: Boolean(collection), ...(collection ? { collection } : {}) })
+        }
+        if (action === 'synthesize' && req.method === 'POST') {
+          const result = services.research.synthesizeToArtifact(id!)
+          return void json(res, 200, { ok: true, ...result })
+        }
+        json(res, 404, { ok: false, error: 'not-found' })
+      }),
+    },
+
     // ── memory ───────────────────────────────────────────────────────────────
     exact(`${API_PREFIX}/memory`, routeErrors(async (req, res) => {
       if (req.method === 'GET') {

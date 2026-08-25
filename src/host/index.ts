@@ -5,7 +5,8 @@ import { buildServices } from './services/index.ts'
 import { makeRoutes } from './routes/index.ts'
 import { registerFoundationTools, setToolVersion } from './tools/foundation.ts'
 import { makeMemoryTools } from './tools/memory.ts'
-import { ECHO_DEMO_WORKFLOW } from './workflows.ts'
+import { makeResearchTools } from './tools/research.ts'
+import { ECHO_DEMO_WORKFLOW, makeLiteratureRadarWorkflow } from './workflows.ts'
 import type { GradHostContext } from './types.ts'
 
 const PACKAGE_JSON = fileURLToPath(new URL('../package.json', import.meta.url))
@@ -46,7 +47,10 @@ export function apply(ctx: GradHostContext): void {
     const services = buildServices(layout)
 
     // Built-in workflows (real vertical slices register here too).
-    const unregisterWorkflows = [services.workflows.register(ECHO_DEMO_WORKFLOW)]
+    const unregisterWorkflows = [
+      services.workflows.register(ECHO_DEMO_WORKFLOW),
+      services.workflows.register(makeLiteratureRadarWorkflow(services)),
+    ]
 
     const disposers: Array<() => void> = []
 
@@ -62,6 +66,7 @@ export function apply(ctx: GradHostContext): void {
     disposers.push(
       ...registerFoundationTools(ctx.tools, services),
       ...makeMemoryTools(services).map((tool) => ctx.tools.register(tool)),
+      ...makeResearchTools(services).map((tool) => ctx.tools.register(tool)),
     )
 
     ctx.logger.info(
