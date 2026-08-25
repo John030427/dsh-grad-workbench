@@ -5,6 +5,15 @@
 
 **Last updated:** 2026-08-26 · **Repo:** `C:\Users\Administrator\Projects\dsh-grad-workbench` · **Branch:** main
 
+## Verified live end-to-end (real DSH instance, port 3081)
+
+- grad profile boots clean; smoke.mjs passes; client bundle served
+- research radar against REAL OpenAlex: 15 unique papers collected, deduped,
+  synthesized into evidence-tagged Markdown artifact (11 validated claims);
+  S2 rate-limit degraded gracefully into provider notes
+- headless agent flows: capture→route, workflow start→parking→inspection,
+  memory remember/search, research latest→synthesize (no auto-approval)
+
 ## How to resume after a disconnect
 
 1. `git -C C:\Users\Administrator\Projects\dsh-grad-workbench log --oneline -5` and read this file.
@@ -30,9 +39,9 @@
 |---|---|---|
 | 0 | Recon + scaffold + grad profile + grad_ping + client shell | ✅ DONE |
 | 1 | DB/artifacts/runs/approvals + capture + mock workflow + Home/Inbox UI | ✅ DONE |
-| 2 | Memory v1 (FTS5, scopes, supersession, sensitivity, candidates) + Memory Center | ✅ DONE (30/30 tests, live + headless verified) |
-| 3 | Research Radar: OpenAlex/S2 providers → dedup → cited synthesis → UI | 🔜 NEXT |
-| 4 | Feishu CLI connector behind approval | ⬜ |
+| 2 | Memory v1 (FTS5, scopes, supersession, sensitivity, candidates) + Memory Center | ✅ DONE |
+| 3 | Research Radar: providers → dedup → cited synthesis → UI (golden slice LIVE) | ✅ DONE (39/39 tests) |
+| 4 | Feishu CLI connector behind approval | 🔜 NEXT |
 | 5 | Communication assistant | ⬜ |
 | 6 | Food Map | ⬜ |
 | 7 | Life Ledger + fitness | ⬜ |
@@ -77,25 +86,39 @@ smoke tests without an HTTP layer.
   `toJsonLossless()` (already wired into `defineGradTool`).
 - Prefix webserver routes must be registered WITHOUT trailing slash; suffix
   slicing still uses the slash form (`pathnameSuffix(req, prefix + '/')`).
-- Never declare `webServer` in static inject; use the guarded accessor.
+- webServer IS declared in static inject; headless profiles satisfy it via the
+  `dsh-webserver-shim` bundle (ctx.provide no-op) — see profile notes above.
 - node --test runs .ts sources directly (type stripping) BUT parameter
   properties / enums / namespaces are unsupported — keep classes erasable.
 
-## Next up (Phase 2 concrete steps)
+## Next up (Phase 4 — Feishu connector)
 
-1. `services/memory-service.ts`: CRUD on memory_items + FTS5 virtual table
-   (`memory_fts`) kept in sync; rebuildable index.
-2. Retrieval: lexical FTS + scope filter + recency decay + pinned boost; return
-   {item, score, why, age} tuples; usage recording into memory_usage per run.
-3. Candidate writes: proposeMemory() creates userConfirmed=0 items; confirm via
-   tool/route; supersession via supersedesId (never destructive mutation).
-4. Sensitivity gating: restricted items only leave storage when the caller
-   explicitly requests that category AND policy allows; secrets never stored.
-5. Tools: grad_memory_search / grad_memory_propose / grad_memory_confirm /
-   grad_memory_update / grad_memory_delete (+ why-used explanation).
-6. Memory Center page in client: search/filter/edit/delete/pin/outdated/export.
-7. Tests: scope isolation, FTS match quality, supersession chain, sensitivity
-   gating, usage provenance.
+1. Check whether `larksuite/cli` (`lark` binary) exists locally; implement
+   `FeishuCliConnector` behind the Connector interface with a MOCK executor for
+   tests; document the real-credential blocker when hit.
+2. `src/host/connectors/feishu.ts`: Connector {id, capabilities(), health(),
+   preview(action), execute(action, approvalId)}; execute() REQUIRES an
+   approved approval id and consumes it via ApprovalService before any CLI call.
+3. Action types: doc.create-from-markdown, doc.update-append, base.row-insert,
+   im.send. Previews rendered as Markdown cards.
+4. Recipe `literature-to-feishu`: build-collection → synthesize → publish
+   (approval-gated step).
+5. Tools: grad_connector_list / grad_feishu_preview / grad_feishu_publish.
+6. Connections page UI: capability cards + health + auth state.
+7. Tests: mocked CLI process; approval enforcement; payload-hash binding;
+   consumed-approval cannot republish.
+
+Then Phases 5-9 per docs/DSH_DEVELOPMENT_PLAN.md (communication → food →
+ledger → forms → skill studio), each: service + tools + routes + UI page +
+tests + live verify + commit. Phase 10 audio brief needs a TTS provider choice
+(likely user-input point). Phase 11 WeChat stays feature-flagged OFF.
+
+## Known deferred items
+
+- LLM narrative synthesis (currently deterministic metadata-level reports) —
+  needs model-policy service integration (plan §12).
+- OpenAlex now enforces a daily budget from this machine's IP — real-network
+  tests stay tagged/separate; disk cache is consulted first.
 
 ## Definition of done reminder
 
