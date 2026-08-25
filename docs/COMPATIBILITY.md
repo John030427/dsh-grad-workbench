@@ -124,9 +124,23 @@ community example). Re-verify after any DSH upgrade.
   via `ctx.webServer`, and `ctx.reflect.get(name, false)` only sees the local
   fiber's store — it does NOT walk ancestor fibers, so it cannot be used for
   optional service lookup either.
-- The loader treats an entry's `inject` as a patchable option: a patch row
-  `- id: <entry> / inject: [ ... ]` fully overrides the module's static inject.
-- Decision: static `inject = ['webServer', 'tools']` for web profiles; the
-  headless smoke profile (`~/.dsh/profiles/grad-headless`) overrides it to
-  `[tools]`; runtime code additionally guards `ctx.webServer` access in
-  try/catch so a wrong profile shape degrades instead of crashing boot.
+- HOWEVER the proxy get-trap walks ancestor fiber STORES before consulting the
+  inject map: a provided ancestor service is readable WITHOUT declaring it.
+  Therefore `inject = ['tools']` plus a try/catch-guarded `ctx.webServer` read
+  works on web profiles (provided upstream) and degrades cleanly on headless
+  profiles (absent → throw → caught → no routes). Verified live on both.
+
+## Tool definition semantics (learned by crash, rc.2)
+
+- A registered ToolDefinition's `parameters` must be RAW JSON Schema (object
+  root with properties/required), NOT the author-facing per-property spec map
+  that `defineTool` takes — defineTool compiles spec→JSON Schema internally,
+  but plain-object definitions skip that step. A spec-shaped `parameters`
+  compiles to a permissive wire schema and the model sees NO arguments.
+- Tool output values are enforced as LOSSLESS JSON: an explicit `undefined`
+  property anywhere in the returned value fails dispatch with
+  `INVALID_TOOL_OUTPUT "value is not lossless JSON"`. All grad tools pass their
+  results through `toJsonLossless()` which strips undefined values deeply.
+- Profile-layer patch rows (`~/.dsh/profiles/<p>/cordis.patch.yml`) did NOT
+  override an inserted entry's `inject` in practice; the guarded-access design
+  above removes the need.

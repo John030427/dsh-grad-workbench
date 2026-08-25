@@ -39,7 +39,7 @@ function mockResponse() {
 test('host entry exports the verified plugin contract', () => {
   assert.ok(Array.isArray(host.inject), 'inject must be an array of service names')
   assert.ok(host.inject.includes('tools'), 'inject must include tools (present in web + headless)')
-  assert.ok(host.inject.includes('webServer'), 'inject must include webServer for the primary web profile')
+  assert.ok(!host.inject.includes('webServer'), 'webServer must be optional-guarded, not declared in inject')
   assert.equal(typeof host.apply, 'function', 'apply(ctx) must be a function')
 })
 
@@ -66,7 +66,9 @@ test('grad_ping tool follows the registry ToolDefinition shape', async () => {
   const ping = record.tools.find((t) => t.name === 'grad_ping')
   assert.ok(ping, 'grad_ping registered')
   assert.equal(typeof ping.description, 'string')
-  assert.deepEqual(ping.parameters, {})
+  // parameters must be a RAW JSON Schema object root (registry contract)
+  assert.equal(ping.parameters.type, 'object')
+  assert.deepEqual(ping.parameters.properties, {})
   assert.equal(typeof ping.output.render, 'function', 'output.render must be a function')
   assert.equal(ping.output.schema.type, 'object')
   const value = await ping.execute({}, {})

@@ -1,12 +1,15 @@
 /**
  * Graduate OS workbench client — one surface inside the native DSH session view.
  * Client is a projection only: all canonical state lives in the Host.
+ * Every external action shown here routes through the Host approval service.
  */
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import type { ReactElement } from 'react'
 
 export const API = '/api/grad'
+
+// ── host-facing types (mirror shared/contracts) ─────────────────────────────
 
 export interface HealthInfo {
   ok: boolean
@@ -14,17 +17,54 @@ export interface HealthInfo {
   version: string
   dataDir?: string
   migrations?: Array<{ version: number; name: string }>
-  startedAt?: string
+  workflows?: Array<{ id: string; title: string; steps: number }>
 }
 
-async function fetchHealth(): Promise<HealthInfo | null> {
-  try {
-    const res = await fetch(`${API}/health`)
-    if (!res.ok) return null
-    return (await res.json()) as HealthInfo
-  } catch {
-    return null
-  }
+export interface RunInfo {
+  id: string
+  workflowId: string
+  status: 'queued' | 'running' | 'waiting_approval' | 'failed' | 'completed'
+  startedAt: string
+  finishedAt?: string
+  error?: string
+}
+
+export interface ApprovalInfo {
+  id: string
+  actionType: string
+  summary: string
+  destination?: string
+  workflowRunId?: string
+  status: string
+  createdAt: string
+  payload?: unknown
+}
+
+export interface CaptureInfo {
+  id: string
+  createdAt: string
+  source: string
+  text?: string
+  inferredIntent?: string
+  routeConfidence?: number
+  status: string
+}
+
+async function get<T>(path: string): Promise<T> {
+  const res = await fetch(`${API}${path}`)
+  if (!res.ok) throw new Error(`${path}: ${res.status}`)
+  return (await res.json()) as T
+}
+
+async function post<T>(path: string, body: unknown): Promise<T> {
+  const res = await fetch(`${API}${path}`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  const data = (await res.json()) as T & { ok?: boolean; error?: string }
+  if (!res.ok || data.ok === false) throw new Error(data.error ?? `${path}: ${res.status}`)
+  return data
 }
 
 // ── styles ──────────────────────────────────────────────────────────────────
@@ -41,17 +81,28 @@ const CSS = `
 .gwb-nav-item { text-align:left; border:0; background:transparent; color:inherit; cursor:pointer; padding:7px 10px; border-radius:8px; font-size:13px; }
 .gwb-nav-item:hover { background:rgba(128,128,128,.15); }
 .gwb-nav-item.active { background:rgba(99,140,255,.22); font-weight:600; }
+.gwb-nav-item:disabled { opacity:.45; cursor:default; }
 .gwb-content { flex:1 1 auto; overflow-y:auto; padding:16px 20px; min-width:0; }
 .gwb-card { border:1px solid rgba(128,128,128,.22); border-radius:12px; padding:14px 16px; margin-bottom:12px; background:rgba(128,128,128,.05); }
 .gwb-card h3 { margin:0 0 6px 0; font-size:13px; }
 .gwb-card p { margin:4px 0; opacity:.85; }
 .gwb-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:10px; }
 .gwb-action { text-align:left; border:1px solid rgba(128,128,128,.25); background:transparent; color:inherit; border-radius:10px; padding:10px 12px; cursor:pointer; }
-.gwb-action:hover { border-color:rgba(99,140,255,.6); }
+.gwb-action:hover:not(:disabled) { border-color:rgba(99,140,255,.6); }
+.gwb-action:disabled { opacity:.45; cursor:default; }
 .gwb-pill { display:inline-block; padding:2px 8px; border-radius:999px; font-size:11px; border:1px solid rgba(128,128,128,.3); }
 .gwb-ok { color:#4ade80; }
 .gwb-bad { color:#f87171; }
+.gwb-warn { color:#fbbf24; }
 .gwb-muted { opacity:.55; }
+.gwb-row { display:flex; align-items:center; gap:8px; padding:7px 0; border-bottom:1px dashed rgba(128,128,128,.15); flex-wrap:wrap; }
+.gwb-row:last-child { border-bottom:0; }
+.gwb-btn { border:1px solid rgba(128,128,128,.35); background:transparent; color:inherit; border-radius:8px; padding:4px 12px; cursor:pointer; font-size:12px; }
+.gwb-btn.primary { border-color:#4ade80; color:#4ade80; }
+.gwb-btn.danger { border-color:#f87171; color:#f87171; }
+.gwb-btn:hover { filter:brightness(1.25); }
+.gwb-input { width:100%; box-sizing:border-box; background:transparent; border:1px solid rgba(128,128,128,.3); color:inherit; border-radius:8px; padding:8px 10px; font-size:13px; resize:vertical; }
+.gwb-mono { font-family:ui-monospace,Consolas,monospace; font-size:11px; word-break:break-all; }
 `
 
 function ensureStyles(): void {
@@ -62,81 +113,208 @@ function ensureStyles(): void {
   document.head.appendChild(style)
 }
 
+function StatusPill({ status }: { status: string }) {
+  const cls =
+    status === 'completed' ? 'gwb-ok'
+    : status === 'failed' ? 'gwb-bad'
+    : status === 'waiting_approval' ? 'gwb-warn'
+    : ''
+  return <span className={`gwb-pill ${cls}`}>{status}</span>
+}
+
 // ── pages ───────────────────────────────────────────────────────────────────
 
-type PageId =
-  | 'home'
-  | 'research'
-  | 'communication'
-  | 'life'
-  | 'automation'
-  | 'memory'
-  | 'connections'
-  | 'settings'
+type PageId = 'home' | 'research' | 'communication' | 'life' | 'automation' | 'memory' | 'connections' | 'settings'
 
-const NAV: Array<{ id: PageId; label: string }> = [
-  { id: 'home', label: '🏠 Home' },
-  { id: 'research', label: '🔬 Research' },
-  { id: 'communication', label: '💬 Communication' },
-  { id: 'life', label: '🍜 Life' },
-  { id: 'automation', label: '⚙️ Automation' },
-  { id: 'memory', label: '🧠 Memory' },
-  { id: 'connections', label: '🔗 Connections' },
-  { id: 'settings', label: '🔧 Settings' },
+const NAV: Array<{ id: PageId; label: string; enabled: boolean }> = [
+  { id: 'home', label: '🏠 Home', enabled: true },
+  { id: 'research', label: '🔬 Research', enabled: false },
+  { id: 'communication', label: '💬 Communication', enabled: false },
+  { id: 'life', label: '🍜 Life', enabled: false },
+  { id: 'automation', label: '⚙️ Automation', enabled: true },
+  { id: 'memory', label: '🧠 Memory', enabled: false },
+  { id: 'connections', label: '🔗 Connections', enabled: false },
+  { id: 'settings', label: '🔧 Settings', enabled: false },
 ]
 
 const PLACEHOLDER: Partial<Record<PageId, { title: string; phase: number; desc: string }>> = {
   research: { title: 'Research', phase: 3, desc: 'Latest-50 literature radar → cited synthesis → Feishu publish → audio brief.' },
   communication: { title: 'Communication', phase: 5, desc: 'Advisor message understanding and reply drafting. Drafts only until approved.' },
   life: { title: 'Life', phase: 6, desc: 'Food Map, fitness log, volunteer/activity ledger.' },
-  automation: { title: 'Automation', phase: 8, desc: 'Form Assistant, Skill Studio and reusable workflow recipes.' },
   memory: { title: 'Memory Center', phase: 2, desc: 'Scoped, inspectable, source-attributed local memory.' },
   connections: { title: 'Connections', phase: 4, desc: 'Feishu/Lark first; WeChat behind adapter + feature flag.' },
   settings: { title: 'Settings', phase: 1, desc: 'Workbench preferences, data location, memory write policy.' },
 }
 
-function HomePage({ health }: { health: HealthInfo | null }) {
+function PendingApprovalsCard({ approvals, onChanged }: { approvals: ApprovalInfo[]; onChanged: () => void }) {
+  const [busy, setBusy] = useState(false)
+  if (approvals.length === 0) {
+    return (
+      <div className="gwb-card">
+        <h3>Pending approvals</h3>
+        <p className="gwb-muted">No external actions waiting. Side effects always require explicit approval here.</p>
+      </div>
+    )
+  }
+  const resolve = async (id: string, decision: 'approved' | 'rejected') => {
+    setBusy(true)
+    try {
+      await post(`/approvals/${id}/resolve`, { decision })
+      onChanged()
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <div className="gwb-card">
+      <h3>Pending approvals ({approvals.length})</h3>
+      {approvals.map((a) => (
+        <div key={a.id} className="gwb-row">
+          <StatusPill status={a.actionType} />
+          <span style={{ flex: 1 }}>{a.summary}</span>
+          {a.destination ? <span className="gwb-muted">→ {a.destination}</span> : null}
+          {a.workflowRunId ? <span className="gwb-mono gwb-muted">{a.workflowRunId.slice(0, 8)}</span> : null}
+          <button type="button" className="gwb-btn danger" disabled={busy} onClick={() => resolve(a.id, 'rejected')}>
+            Reject
+          </button>
+          <button type="button" className="gwb-btn primary" disabled={busy} onClick={() => resolve(a.id, 'approved')}>
+            Approve once
+          </button>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function HomePage({
+  health,
+  runs,
+  approvals,
+  captures,
+  onChanged,
+}: {
+  health: HealthInfo | null
+  runs: RunInfo[]
+  approvals: ApprovalInfo[]
+  captures: CaptureInfo[]
+  onChanged: () => void
+}) {
+  const [draft, setDraft] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  const capture = async () => {
+    if (!draft.trim()) return
+    setBusy(true)
+    try {
+      await post('/captures', { text: draft.trim() })
+      setDraft('')
+      onChanged()
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const runEchoDemo = async () => {
+    setBusy(true)
+    try {
+      await post('/workflows/echo-demo/run', { input: { message: `Home quick action ${new Date().toLocaleTimeString()}` } })
+      onChanged()
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return (
     <div>
       <div className="gwb-card">
-        <h3>Graduate OS / 硕博工作台</h3>
-        <p className="gwb-muted">
-          Task-first workbench: input → task router → Skill / Workflow → tools + memory + model policy →
-          artifact → approval when side effects exist → connector.
-        </p>
-        {health ? (
-          <p>
-            <span className="gwb-pill gwb-ok">host online</span>{' '}
-            <span className="gwb-pill">v{health.version}</span>{' '}
-            <span className="gwb-pill">migrations: {health.migrations?.length ?? 0}</span>
-          </p>
-        ) : (
-          <p><span className="gwb-pill gwb-bad">host unreachable</span></p>
-        )}
-      </div>
-      <div className="gwb-card">
-        <h3>Quick actions</h3>
-        <div className="gwb-grid">
-          {[
-            ['📄 Latest 50 papers', 'research'],
-            ['💬 Understand teacher msg', 'communication'],
-            ['🍜 Save restaurant', 'life'],
-            ['📝 Fill form', 'automation'],
-            ['✅ Log volunteer hours', 'life'],
-            ['🏋️ Log workout', 'life'],
-          ].map(([label]) => (
-            <button key={label} type="button" className="gwb-action" disabled title="Arrives with its vertical slice">
-              {label}
-            </button>
-          ))}
+        <h3>Universal capture</h3>
+        <textarea
+          className="gwb-input"
+          rows={2}
+          placeholder="Paste a sentence, a teacher message, a paper topic…"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+        />
+        <div style={{ marginTop: 8 }}>
+          <button type="button" className="gwb-btn primary" disabled={busy || !draft.trim()} onClick={capture}>
+            Capture → route
+          </button>
         </div>
       </div>
+
+      <PendingApprovalsCard approvals={approvals} onChanged={onChanged} />
+
+      <div className="gwb-card">
+        <h3>Recent workflow runs</h3>
+        {runs.length === 0 ? (
+          <p className="gwb-muted">
+            No runs yet.{' '}
+            <button type="button" className="gwb-btn" disabled={busy} onClick={runEchoDemo}>
+              Run echo-demo
+            </button>{' '}
+            to see the approval flow.
+          </p>
+        ) : (
+          runs.slice(0, 8).map((r) => (
+            <div key={r.id} className="gwb-row">
+              <StatusPill status={r.status} />
+              <span>{r.workflowId}</span>
+              <span className="gwb-muted">{new Date(r.startedAt).toLocaleString()}</span>
+              <span className="gwb-mono gwb-muted" style={{ marginLeft: 'auto' }}>
+                {r.id.slice(0, 8)}
+              </span>
+              {r.error ? <span className="gwb-bad">{r.error}</span> : null}
+            </div>
+          ))
+        )}
+      </div>
+
+      <div className="gwb-card">
+        <h3>Latest captures</h3>
+        {captures.length === 0 ? (
+          <p className="gwb-muted">Nothing captured yet.</p>
+        ) : (
+          captures.slice(0, 6).map((c) => (
+            <div key={c.id} className="gwb-row">
+              <StatusPill status={c.status} />
+              <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.text}</span>
+              {c.inferredIntent ? <span className="gwb-pill">{c.inferredIntent}</span> : null}
+            </div>
+          ))
+        )}
+      </div>
+
       {health?.dataDir ? (
         <div className="gwb-card">
           <h3>Data</h3>
-          <p className="gwb-muted" style={{ wordBreak: 'break-all' }}>local-first root: {health.dataDir}</p>
+          <p className="gwb-muted gwb-mono">local-first root: {health.dataDir}</p>
         </div>
       ) : null}
+    </div>
+  )
+}
+
+function AutomationPage({ runs }: { runs: RunInfo[] }) {
+  return (
+    <div>
+      <div className="gwb-card">
+        <h3>Run history</h3>
+        {runs.length === 0 ? (
+          <p className="gwb-muted">No runs recorded yet.</p>
+        ) : (
+          runs.map((r) => (
+            <div key={r.id} className="gwb-row">
+              <StatusPill status={r.status} />
+              <span className="gwb-mono">{r.id.slice(0, 8)}</span>
+              <span>{r.workflowId}</span>
+              <span className="gwb-muted">{new Date(r.startedAt).toLocaleString()}</span>
+              {r.error ? <span className="gwb-bad">{r.error}</span> : null}
+            </div>
+          ))
+        )}
+      </div>
+      <PlaceholderPage page={{ title: 'Skill Studio', phase: 9, desc: 'Compose skills into typed recipes with validation and fixtures.' }} />
+      <PlaceholderPage page={{ title: 'Form Assistant', phase: 8, desc: 'Inspect forms, propose values with sources, fill and submit behind two separate approvals.' }} />
     </div>
   )
 }
@@ -156,17 +334,23 @@ function PlaceholderPage({ page }: { page: NonNullable<(typeof PLACEHOLDER)[Page
 export function GradWorkbench(): ReactElement {
   const [page, setPage] = useState<PageId>('home')
   const [health, setHealth] = useState<HealthInfo | null>(null)
+  const [runs, setRuns] = useState<RunInfo[]>([])
+  const [approvals, setApprovals] = useState<ApprovalInfo[]>([])
+  const [captures, setCaptures] = useState<CaptureInfo[]>([])
+
+  const refresh = useCallback(() => {
+    void get<{ ok: boolean } & HealthInfo>('/health').then(setHealth).catch(() => setHealth(null))
+    void get<{ runs: RunInfo[] }>('/runs').then((d) => setRuns(d.runs)).catch(() => {})
+    void get<{ approvals: ApprovalInfo[] }>('/approvals?status=pending').then((d) => setApprovals(d.approvals)).catch(() => {})
+    void get<{ captures: CaptureInfo[] }>('/captures').then((d) => setCaptures(d.captures)).catch(() => {})
+  }, [])
 
   useEffect(() => {
     ensureStyles()
-    let alive = true
-    fetchHealth().then((info) => {
-      if (alive) setHealth(info)
-    })
-    return () => {
-      alive = false
-    }
-  }, [])
+    refresh()
+    const timer = setInterval(refresh, 5000)
+    return () => clearInterval(timer)
+  }, [refresh])
 
   const placeholder = PLACEHOLDER[page]
 
@@ -174,7 +358,8 @@ export function GradWorkbench(): ReactElement {
     <div className="gwb-root">
       <div className="gwb-header">
         <span className="gwb-title">🎓 硕博工作台 · Graduate OS</span>
-        {health ? <span className="gwb-sub">v{health.version}</span> : <span className="gwb-sub gwb-bad">offline</span>}
+        {health ? <span className="gwb-sub">v{health.version}</span> : <span className="gwb-sub gwb-bad">host offline</span>}
+        {approvals.length > 0 ? <span className="gwb-pill gwb-warn">{approvals.length} approval(s) waiting</span> : null}
       </div>
       <div className="gwb-body">
         <nav className="gwb-nav">
@@ -182,6 +367,8 @@ export function GradWorkbench(): ReactElement {
             <button
               key={item.id}
               type="button"
+              disabled={!item.enabled}
+              title={item.enabled ? undefined : 'Arrives with its vertical slice'}
               className={`gwb-nav-item${page === item.id ? ' active' : ''}`}
               onClick={() => setPage(item.id)}
             >
@@ -191,7 +378,9 @@ export function GradWorkbench(): ReactElement {
         </nav>
         <main className="gwb-content">
           {page === 'home' ? (
-            <HomePage health={health} />
+            <HomePage health={health} runs={runs} approvals={approvals} captures={captures} onChanged={refresh} />
+          ) : page === 'automation' ? (
+            <AutomationPage runs={runs} />
           ) : placeholder ? (
             <PlaceholderPage page={placeholder} />
           ) : null}

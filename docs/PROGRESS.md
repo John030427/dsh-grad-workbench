@@ -3,7 +3,7 @@
 > Living document. Update at the end of EVERY work session/phase.
 > A fresh agent session should be able to resume from this file alone.
 
-**Last updated:** 2026-08-25 · **Repo:** `C:\Users\Administrator\Projects\dsh-grad-workbench` · **Branch:** main
+**Last updated:** 2026-08-26 · **Repo:** `C:\Users\Administrator\Projects\dsh-grad-workbench` · **Branch:** main
 
 ## How to resume after a disconnect
 
@@ -29,8 +29,8 @@
 | Phase | Scope | Status |
 |---|---|---|
 | 0 | Recon + scaffold + grad profile + grad_ping + client shell | ✅ DONE |
-| 1 | DB/artifacts/runs/approvals + capture + mock workflow + Home/Inbox UI | 🔜 NEXT |
-| 2 | Memory v1 (FTS, scopes, supersession, candidate writes) + Memory Center | ⬜ |
+| 1 | DB/artifacts/runs/approvals + capture + mock workflow + Home/Inbox UI | ✅ DONE (25/25 tests, live + headless verified) |
+| 2 | Memory v1 (FTS, scopes, supersession, candidate writes) + Memory Center | 🔜 NEXT |
 | 3 | Research Radar: OpenAlex/S2 providers → dedup → cited synthesis → UI | ⬜ |
 | 4 | Feishu CLI connector behind approval | ⬜ |
 | 5 | Communication assistant | ⬜ |
@@ -41,16 +41,34 @@
 | 10 | Audio brief | ⬜ |
 | 11 | WeChat adapter (feature-flagged, disabled by default) | ⬜ |
 
-## Next up (Phase 1 concrete steps)
+## Hard-won contract facts (do not relearn)
 
-1. `services/artifact-store.ts`: putArtifact/get/list/delete, SHA-256, layout `artifacts/<kind>/<runId>/`.
-2. `services/run-store.ts` + `services/workflow-engine.ts`: queued→running→waiting_approval→completed/failed transitions in transactions; steps with tool calls.
-3. `services/approval-service.ts`: pending/approved/rejected/expired/consumed; payload hash binding; consumed ≠ reusable.
-4. `services/capture-service.ts` + deterministic router (`capture-router.ts`): text capture → route to registered workflow.
-5. One mock workflow `echo-demo` proving end-to-end run + artifact + approval resolution.
-6. Tools: `grad_capture`, `grad_route_capture`, `grad_run_workflow`, `grad_get_run`, `grad_list_runs`, `grad_approval_get`, `grad_approval_resolve`.
-7. Routes under `/api/grad/*` for runs/captures/approvals; Home page shows recent runs + pending approvals.
-8. Unit tests per service; integration test: full mock workflow run through engine; restart persistence test.
+- Tool `parameters` must be RAW JSON Schema — compile spec maps via
+  `compileParameters()` in `src/host/tools/define.ts` (spec form silently
+  produces permissive wire schemas and the model sends no args).
+- Tool outputs are enforced LOSSLESS JSON: strip `undefined` via
+  `toJsonLossless()` (already wired into `defineGradTool`).
+- Prefix webserver routes must be registered WITHOUT trailing slash; suffix
+  slicing still uses the slash form (`pathnameSuffix(req, prefix + '/')`).
+- Never declare `webServer` in static inject; use the guarded accessor.
+- node --test runs .ts sources directly (type stripping) BUT parameter
+  properties / enums / namespaces are unsupported — keep classes erasable.
+
+## Next up (Phase 2 concrete steps)
+
+1. `services/memory-service.ts`: CRUD on memory_items + FTS5 virtual table
+   (`memory_fts`) kept in sync; rebuildable index.
+2. Retrieval: lexical FTS + scope filter + recency decay + pinned boost; return
+   {item, score, why, age} tuples; usage recording into memory_usage per run.
+3. Candidate writes: proposeMemory() creates userConfirmed=0 items; confirm via
+   tool/route; supersession via supersedesId (never destructive mutation).
+4. Sensitivity gating: restricted items only leave storage when the caller
+   explicitly requests that category AND policy allows; secrets never stored.
+5. Tools: grad_memory_search / grad_memory_propose / grad_memory_confirm /
+   grad_memory_update / grad_memory_delete (+ why-used explanation).
+6. Memory Center page in client: search/filter/edit/delete/pin/outdated/export.
+7. Tests: scope isolation, FTS match quality, supersession chain, sensitivity
+   gating, usage provenance.
 
 ## Definition of done reminder
 

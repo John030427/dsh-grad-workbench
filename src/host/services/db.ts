@@ -43,6 +43,12 @@ CREATE TABLE IF NOT EXISTS source_refs (
   created_at TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS artifact_source_refs (
+  artifact_id TEXT NOT NULL REFERENCES artifacts(id),
+  source_ref_id TEXT NOT NULL REFERENCES source_refs(id),
+  PRIMARY KEY (artifact_id, source_ref_id)
+);
+
 CREATE TABLE IF NOT EXISTS artifacts (
   id TEXT PRIMARY KEY,
   kind TEXT NOT NULL,
