@@ -907,6 +907,19 @@ function HomePage({
 }
 
 function AutomationPage({ runs }: { runs: RunInfo[] }) {
+  const [skills, setSkills] = useState<Array<{ id: string; title: string; requiredInputs: string[]; outputs: string[]; externalSideEffect: boolean }>>([])
+  const [recipes, setRecipes] = useState<Array<{ recipeId: string; title: string; steps: string }>>([])
+  const [stepIds, setStepIds] = useState<string[]>([])
+
+  useEffect(() => {
+    void get<{ skills: typeof skills; recipes: typeof recipes }>('/skills')
+      .then((d) => {
+        setSkills(d.skills)
+        setRecipes(d.recipes)
+      })
+      .catch(() => {})
+  }, [])
+
   return (
     <div>
       <div className="gwb-card">
@@ -925,8 +938,50 @@ function AutomationPage({ runs }: { runs: RunInfo[] }) {
           ))
         )}
       </div>
-      <PlaceholderPage page={{ title: 'Skill Studio', phase: 9, desc: 'Compose skills into typed recipes with validation and fixtures.' }} />
-      <PlaceholderPage page={{ title: 'Form Assistant', phase: 8, desc: 'Inspect forms, propose values with sources, fill and submit behind two separate approvals.' }} />
+
+      <div className="gwb-card">
+        <h3>Skill Studio — atomic skills</h3>
+        <p className="gwb-muted">
+          {stepIds.length > 0 ? (
+            <>Selected chain: {stepIds.join(' → ')} (compose via grad_skill_compose_recipe)</>
+          ) : (
+            'Pick skills to see a chain preview; compose via the grad_skill_compose_recipe tool.'
+          )}
+        </p>
+        {skills.map((s) => (
+          <div key={s.id} className="gwb-row">
+            <span className="gwb-pill">{s.externalSideEffect ? 'side-effect' : 'local'}</span>
+            <span style={{ flex: 1 }}>{s.title}</span>
+            <span className="gwb-muted gwb-mono">
+              in: [{s.requiredInputs.join(',')}] out: [{s.outputs.join(',')}]
+            </span>
+            <button
+              type="button"
+              className="gwb-btn"
+              onClick={() => setStepIds((prev) => [...prev, s.id])}
+            >
+              + chain
+            </button>
+          </div>
+        ))}
+        {stepIds.length > 0 ? (
+          <button type="button" className="gwb-btn" onClick={() => setStepIds([])}>Clear chain</button>
+        ) : null}
+        {recipes.length > 0 ? (
+          <>
+            <h3 style={{ marginTop: 10 }}>Composed recipes</h3>
+            {recipes.map((r) => (
+              <div key={r.recipeId} className="gwb-row">
+                <span className="gwb-mono">{r.recipeId}</span>
+                <span>{r.title}</span>
+                <span className="gwb-muted" style={{ flex: 1 }}>{r.steps}</span>
+              </div>
+            ))}
+          </>
+        ) : null}
+      </div>
+
+      <PlaceholderPage page={{ title: 'Form Assistant UI', phase: 8, desc: 'Inspect forms and propose values with sources via the grad_form_* tools; fill/submit run behind two separate approvals.' }} />
     </div>
   )
 }

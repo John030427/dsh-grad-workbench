@@ -30,6 +30,9 @@ export async function makeServiceStack() {
   const { MemoryService } = await import('../src/host/services/memory-service.ts')
   const { FoodService } = await import('../src/host/services/food-service.ts')
   const { LedgerService } = await import('../src/host/services/ledger-service.ts')
+  const { ResearchService } = await import('../src/host/research/index.ts')
+  const { ConnectorRegistry } = await import('../src/host/connectors/registry.ts')
+  const { FeishuCliConnector } = await import('../src/host/connectors/feishu.ts')
   const layout = dataLayout(home)
   const database = openDatabase({ layout })
   const artifacts = new ArtifactStore(database.db, layout.artifactsDir)
@@ -38,6 +41,9 @@ export async function makeServiceStack() {
   const memory = new MemoryService(database.db)
   const food = new FoodService(database.db)
   const ledger = new LedgerService(database.db)
+  const research = new ResearchService(database.db, layout, artifacts)
+  const connectors = new ConnectorRegistry()
+  connectors.register(new FeishuCliConnector(database.db))
   return {
     home,
     layout,
@@ -48,11 +54,14 @@ export async function makeServiceStack() {
     memory,
     food,
     ledger,
+    research,
+    connectors,
     cleanup() {
       database.db.close()
       rmRf(home)
     },
   }
 }
+
 
 

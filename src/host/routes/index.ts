@@ -206,6 +206,16 @@ export function makeRoutes(deps: RouteDeps): WebRoute[] {
       }),
     },
 
+    // ── skills ───────────────────────────────────────────────────────────────
+    exact(`${API_PREFIX}/skills`, (req, res) => {
+      if (req.method !== 'GET') return void json(res, 405, { ok: false, error: 'method-not-allowed' })
+      json(res, 200, {
+        ok: true,
+        skills: services.studio.listSkills(),
+        recipes: services.studio.listRecipes(),
+      })
+    }),
+
     // ── connectors ───────────────────────────────────────────────────────────
     exact(`${API_PREFIX}/connectors`, routeErrors(async (req, res) => {
       if (req.method !== 'GET') return void json(res, 405, { ok: false, error: 'method-not-allowed' })

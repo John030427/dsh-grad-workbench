@@ -46,9 +46,9 @@
 | 6 | Food Map: capture→unresolved→user-confirmed pin; place provider seam unwired by design | ✅ DONE (51/51 tests) |
 | 7 | Life Ledger + fitness (UTC-safe durations, workout sets, CSV export, last-workout lookup) | ✅ DONE (56/56 tests) |
 | 8 | Form Assistant: profile vault w/ sensitivity, two approval gates (fill/submit), recipe fingerprinting, mock automation seam | ✅ DONE (58/58 tests) |
-| 9 | Skill Studio | 🔜 NEXT |
-| 10 | Audio brief | ⬜ |
-| 11 | WeChat adapter (feature-flagged, disabled by default) | ⬜ |
+| 9 | Skill Studio: atomic skill catalog + recipe compiler (validation, auto approval gates, runnable workflows) | ✅ DONE (61/61 tests) |
+| 10 | Audio brief | ⬜ (needs TTS provider choice — USER INPUT POINT) |
+| 11 | WeChat adapter adapter seam + feature flag OFF; docs | ⬜ |
 
 ## Headless smoke profile
 
@@ -138,6 +138,7 @@ user-input point). Phase 11 WeChat stays feature-flagged OFF.
 ## Definition of done reminder
 
 MVP = PRD §18. Do not declare success while any P0 slice is mocked that could run for real locally.
+
 
 
 

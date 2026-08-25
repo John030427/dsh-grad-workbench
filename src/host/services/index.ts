@@ -9,6 +9,7 @@ import { CommunicationService } from './communication-service.ts'
 import { FoodService } from './food-service.ts'
 import { LedgerService } from './ledger-service.ts'
 import { FormService } from './form-service.ts'
+import { SkillStudioService } from './skill-studio.ts'
 import { ResearchService } from '../research/index.ts'
 import { ConnectorRegistry } from '../connectors/registry.ts'
 import { FeishuCliConnector } from '../connectors/feishu.ts'
@@ -24,6 +25,7 @@ export interface HostServices {
   food: FoodService
   ledger: LedgerService
   forms: FormService
+  studio: SkillStudioService
   research: ResearchService
   connectors: ConnectorRegistry
   close(): void
@@ -42,9 +44,24 @@ export function buildServices(layout: DataLayout): HostServices {
   const ledger = new LedgerService(db)
   const forms = new FormService(db)
   const research = new ResearchService(db, layout, artifacts)
-
   const connectors = new ConnectorRegistry()
   connectors.register(new FeishuCliConnector(db))
+  const studio = new SkillStudioService({
+    database,
+    artifacts,
+    approvals,
+    workflows,
+    captures,
+    memory,
+    communication,
+    food,
+    ledger,
+    forms,
+    studio: undefined as never,
+    research,
+    connectors,
+    close: () => {},
+  })
 
   return {
     database,
@@ -57,6 +74,7 @@ export function buildServices(layout: DataLayout): HostServices {
     food,
     ledger,
     forms,
+    studio,
     research,
     connectors,
     close() {
