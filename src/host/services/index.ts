@@ -6,6 +6,7 @@ import { ArtifactStore } from './artifact-store.ts'
 import { ApprovalService } from './approval-service.ts'
 import { WorkflowEngine } from './workflow-engine.ts'
 import { CaptureService } from './capture-service.ts'
+import { MemoryService } from './memory-service.ts'
 
 export interface HostServices {
   database: GradDatabase
@@ -13,6 +14,7 @@ export interface HostServices {
   approvals: ApprovalService
   workflows: WorkflowEngine
   captures: CaptureService
+  memory: MemoryService
   close(): void
 }
 
@@ -23,12 +25,14 @@ export function buildServices(layout: DataLayout): HostServices {
   const approvals = new ApprovalService(db)
   const workflows = new WorkflowEngine(db, approvals, artifacts)
   const captures = new CaptureService(db)
+  const memory = new MemoryService(db)
   return {
     database,
     artifacts,
     approvals,
     workflows,
     captures,
+    memory,
     close() {
       db.close()
     },

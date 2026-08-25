@@ -50,6 +50,22 @@ export interface CaptureInfo {
   status: string
 }
 
+export interface MemoryInfo {
+  id: string
+  scopeType: string
+  kind: string
+  content: string
+  sourceType: string
+  confidence: number
+  createdAt: string
+  sensitivity: string
+  userConfirmed: boolean
+  pinned?: boolean
+  outdated?: boolean
+  why?: string
+  ageDays?: number
+}
+
 async function get<T>(path: string): Promise<T> {
   const res = await fetch(`${API}${path}`)
   if (!res.ok) throw new Error(`${path}: ${res.status}`)
@@ -132,7 +148,7 @@ const NAV: Array<{ id: PageId; label: string; enabled: boolean }> = [
   { id: 'communication', label: '💬 Communication', enabled: false },
   { id: 'life', label: '🍜 Life', enabled: false },
   { id: 'automation', label: '⚙️ Automation', enabled: true },
-  { id: 'memory', label: '🧠 Memory', enabled: false },
+  { id: 'memory', label: '🧠 Memory', enabled: true },
   { id: 'connections', label: '🔗 Connections', enabled: false },
   { id: 'settings', label: '🔧 Settings', enabled: false },
 ]
@@ -141,9 +157,106 @@ const PLACEHOLDER: Partial<Record<PageId, { title: string; phase: number; desc: 
   research: { title: 'Research', phase: 3, desc: 'Latest-50 literature radar → cited synthesis → Feishu publish → audio brief.' },
   communication: { title: 'Communication', phase: 5, desc: 'Advisor message understanding and reply drafting. Drafts only until approved.' },
   life: { title: 'Life', phase: 6, desc: 'Food Map, fitness log, volunteer/activity ledger.' },
-  memory: { title: 'Memory Center', phase: 2, desc: 'Scoped, inspectable, source-attributed local memory.' },
   connections: { title: 'Connections', phase: 4, desc: 'Feishu/Lark first; WeChat behind adapter + feature flag.' },
   settings: { title: 'Settings', phase: 1, desc: 'Workbench preferences, data location, memory write policy.' },
+}
+
+function MemoryPage(): ReactElement {
+  const [items, setItems] = useState<MemoryInfo[]>([])
+  const [query, setQuery] = useState('')
+  const [draft, setDraft] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  const load = useCallback(() => {
+    const path = query.trim() ? `/memory?q=${encodeURIComponent(query.trim())}` : '/memory'
+    void get<{ items?: MemoryInfo[]; results?: MemoryInfo[] }>(path).then((d) => {
+      setItems(d.items ?? d.results ?? [])
+    }).catch(() => {})
+  }, [query])
+
+  useEffect(() => {
+    load()
+  }, [load])
+
+  const add = async () => {
+    if (!draft.trim()) return
+    setBusy(true)
+    try {
+      await post('/memory', { content: draft.trim() })
+      setDraft('')
+      load()
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const act = async (id: string, action: 'confirm' | 'pin' | 'delete') => {
+    setBusy(true)
+    try {
+      await post(`/memory/${id}/${action}`, {})
+      load()
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div>
+      <div className="gwb-card">
+        <h3>Memory Center</h3>
+        <p className="gwb-muted">
+          Local-first, scoped, source-attributed. Candidates (unconfirmed proposals) need your confirmation before they
+          become first-class.
+        </p>
+        <input
+          className="gwb-input"
+          placeholder="Search memory…"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+        <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+          <input
+            className="gwb-input"
+            style={{ flex: 1 }}
+            placeholder="Remember something new…"
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+          />
+          <button type="button" className="gwb-btn primary" disabled={busy || !draft.trim()} onClick={add}>
+            Add
+          </button>
+        </div>
+      </div>
+
+      <div className="gwb-card">
+        {items.length === 0 ? (
+          <p className="gwb-muted">{query ? `No matches for "${query}".` : 'Memory is empty.'}</p>
+        ) : (
+          items.map((m) => (
+            <div key={m.id} className="gwb-row">
+              <span className="gwb-pill">{m.kind}</span>
+              <span className="gwb-pill gwb-muted">{m.scopeType}</span>
+              {!m.userConfirmed ? <span className="gwb-pill gwb-warn">candidate</span> : null}
+              {m.pinned ? <span className="gwb-pill">📌</span> : null}
+              {m.outdated ? <span className="gwb-pill gwb-muted">outdated</span> : null}
+              <span style={{ flex: 1 }}>{m.content}</span>
+              <button type="button" className="gwb-btn" disabled={busy} onClick={() => act(m.id, 'pin')}>
+                {m.pinned ? 'Unpin' : 'Pin'}
+              </button>
+              {!m.userConfirmed ? (
+                <button type="button" className="gwb-btn primary" disabled={busy} onClick={() => act(m.id, 'confirm')}>
+                  Confirm
+                </button>
+              ) : null}
+              <button type="button" className="gwb-btn danger" disabled={busy} onClick={() => act(m.id, 'delete')}>
+                Delete
+              </button>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  )
 }
 
 function PendingApprovalsCard({ approvals, onChanged }: { approvals: ApprovalInfo[]; onChanged: () => void }) {
@@ -381,6 +494,8 @@ export function GradWorkbench(): ReactElement {
             <HomePage health={health} runs={runs} approvals={approvals} captures={captures} onChanged={refresh} />
           ) : page === 'automation' ? (
             <AutomationPage runs={runs} />
+          ) : page === 'memory' ? (
+            <MemoryPage />
           ) : placeholder ? (
             <PlaceholderPage page={placeholder} />
           ) : null}

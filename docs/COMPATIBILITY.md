@@ -142,5 +142,10 @@ community example). Re-verify after any DSH upgrade.
   `INVALID_TOOL_OUTPUT "value is not lossless JSON"`. All grad tools pass their
   results through `toJsonLossless()` which strips undefined values deeply.
 - Profile-layer patch rows (`~/.dsh/profiles/<p>/cordis.patch.yml`) did NOT
-  override an inserted entry's `inject` in practice; the guarded-access design
-  above removes the need.
+  override an inserted entry's `inject` reliably, and `disabled: true` rows can
+  be undone when a later insert of the same package re-applies its own bundle
+  patch.
+- Working headless recipe: a tiny local bundle `dsh-webserver-shim`
+  (`~/.dsh/dsh-webserver-shim`) that `ctx.provide('webServer', noop)`, listed
+  in the headless profile's bundles BEFORE dsh-grad-workbench. The stock entry
+  then activates everywhere; routes registered into the shim are discarded.

@@ -159,6 +159,13 @@ CREATE TABLE IF NOT EXISTS projects (
 );
 `,
   },
+  {
+    version: 2,
+    name: 'memory-fts',
+    sql: `
+CREATE VIRTUAL TABLE IF NOT EXISTS memory_fts USING fts5(memory_id UNINDEXED, content);
+`,
+  },
 ]
 
 export interface OpenDatabaseOptions {

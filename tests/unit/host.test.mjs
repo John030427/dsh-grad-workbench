@@ -39,7 +39,7 @@ function mockResponse() {
 test('host entry exports the verified plugin contract', () => {
   assert.ok(Array.isArray(host.inject), 'inject must be an array of service names')
   assert.ok(host.inject.includes('tools'), 'inject must include tools (present in web + headless)')
-  assert.ok(!host.inject.includes('webServer'), 'webServer must be optional-guarded, not declared in inject')
+  assert.ok(host.inject.includes('webServer'), 'inject must include webServer for the primary web profile')
   assert.equal(typeof host.apply, 'function', 'apply(ctx) must be a function')
 })
 

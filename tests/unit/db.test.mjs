@@ -49,14 +49,14 @@ test('database schema is created on first mount and persists across mounts', asy
     assert.ok(tables.includes(expected), `table ${expected} exists`)
   }
   const applied = probe.prepare('SELECT version FROM _migrations ORDER BY version').all().map((r) => r.version)
-  assert.deepEqual(applied, [1])
+  assert.deepEqual(applied, [1, 2])
   probe.close()
 
   // Second mount must not fail or duplicate migrations.
   host.apply(mockCtx(record))
   const probe2 = new DatabaseSync(dbPath)
   const applied2 = probe2.prepare('SELECT version FROM _migrations ORDER BY version').all().map((r) => r.version)
-  assert.deepEqual(applied2, [1], 'migrations are idempotent across remounts')
+  assert.deepEqual(applied2, [1, 2], 'migrations are idempotent across remounts')
   probe2.close()
 })
 

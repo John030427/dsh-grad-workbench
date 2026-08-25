@@ -95,6 +95,8 @@ export type MemoryItem = {
   supersedesId?: string
   sensitivity: Sensitivity
   userConfirmed: boolean
+  pinned?: boolean
+  outdated?: boolean
 }
 
 export type MemoryUsage = {

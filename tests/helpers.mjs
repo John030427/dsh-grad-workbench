@@ -27,11 +27,13 @@ export async function makeServiceStack() {
   const { ArtifactStore } = await import('../src/host/services/artifact-store.ts')
   const { ApprovalService } = await import('../src/host/services/approval-service.ts')
   const { WorkflowEngine } = await import('../src/host/services/workflow-engine.ts')
+  const { MemoryService } = await import('../src/host/services/memory-service.ts')
   const layout = dataLayout(home)
   const database = openDatabase({ layout })
   const artifacts = new ArtifactStore(database.db, layout.artifactsDir)
   const approvals = new ApprovalService(database.db)
   const workflows = new WorkflowEngine(database.db, approvals, artifacts)
+  const memory = new MemoryService(database.db)
   return {
     home,
     layout,
@@ -39,6 +41,7 @@ export async function makeServiceStack() {
     artifacts,
     approvals,
     workflows,
+    memory,
     cleanup() {
       database.db.close()
       rmRf(home)

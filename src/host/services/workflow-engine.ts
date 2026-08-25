@@ -131,7 +131,7 @@ export class WorkflowEngine {
             `INSERT INTO workflow_steps (id, run_id, skill_id, skill_version, name, status, input, tool_calls)
              VALUES (?, ?, ?, ?, ?, 'pending', ?, '[]')`,
           )
-          .run(stepId, runId, step.skillId ?? null, def.version, step.name, prevOutput)
+          .run(stepId, runId, step.skillId ?? step.name, def.version, step.name, prevOutput)
         prevOutput = null
       }
       tx.commit()

@@ -149,6 +149,60 @@ export function makeRoutes(deps: RouteDeps): WebRoute[] {
         json(res, 200, { ok: true, artifact: meta, content: text })
       }),
     },
+
+    // ── memory ───────────────────────────────────────────────────────────────
+    exact(`${API_PREFIX}/memory`, routeErrors(async (req, res) => {
+      if (req.method === 'GET') {
+        const url = new URL(req.url ?? '/', 'http://localhost')
+        const q = url.searchParams.get('q')
+        if (q) {
+          const results = services.memory.search({ query: q, limit: 30, includeOutdated: true })
+          return void json(res, 200, {
+            ok: true,
+            results: results.map((r) => ({ ...r.item, why: r.why, ageDays: r.ageDays })),
+          })
+        }
+        return void json(res, 200, { ok: true, items: services.memory.list({ limit: 100 }) })
+      }
+      if (req.method === 'POST') {
+        const body = (await readJsonBody(req)) as { content?: string; kind?: string }
+        if (!body.content) return void json(res, 400, { ok: false, error: 'content-required' })
+        const item = services.memory.remember({
+          content: body.content,
+          kind: body.kind as never,
+          sourceType: 'user',
+          userConfirmed: true,
+        })
+        return void json(res, 201, { ok: true, item })
+      }
+      json(res, 405, { ok: false, error: 'method-not-allowed' })
+    })),
+    {
+      kind: 'prefix',
+      path: `${API_PREFIX}/memory`,
+      handler: routeErrors(async (req, res) => {
+        if (req.method !== 'POST') return void json(res, 405, { ok: false, error: 'method-not-allowed' })
+        const suffix = pathnameSuffix(req, `${API_PREFIX}/memory/`)
+        const [id, action] = suffix.split('/')
+        if (!id || !action) return void json(res, 400, { ok: false, error: 'memory-id-and-action-required' })
+        switch (action) {
+          case 'confirm':
+            json(res, 200, { ok: true, item: services.memory.confirm(id!) })
+            break
+          case 'pin': {
+            const item = services.memory.get(id!)
+            json(res, 200, { ok: true, item: services.memory.setPinned(id!, !(item.pinned ?? false)) })
+            break
+          }
+          case 'delete':
+            services.memory.delete(id!)
+            json(res, 200, { ok: true })
+            break
+          default:
+            json(res, 404, { ok: false, error: 'not-found' })
+        }
+      }),
+    },
   ]
 }
 
