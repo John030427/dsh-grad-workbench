@@ -10,6 +10,7 @@ import { makeConnectorTools } from './tools/connectors.ts'
 import { makeCommunicationTools } from './tools/communication.ts'
 import { makeFoodTools } from './tools/food.ts'
 import { makeLedgerTools } from './tools/ledger.ts'
+import { makeFormTools } from './tools/form.ts'
 import { ECHO_DEMO_WORKFLOW, makeLiteratureRadarWorkflow, makeLiteratureToFeishuWorkflow } from './workflows.ts'
 import type { GradHostContext } from './types.ts'
 
@@ -76,6 +77,7 @@ export function apply(ctx: GradHostContext): void {
       ...makeCommunicationTools(services).map((tool) => ctx.tools.register(tool)),
       ...makeFoodTools(services).map((tool) => ctx.tools.register(tool)),
       ...makeLedgerTools(services).map((tool) => ctx.tools.register(tool)),
+      ...makeFormTools(services).map((tool) => ctx.tools.register(tool)),
     )
 
     ctx.logger.info(

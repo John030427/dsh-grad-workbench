@@ -45,8 +45,8 @@
 | 5 | Communication assistant: understand/draft tools, placeholders over invented progress, drafts as artifacts | ✅ DONE (48/48 tests) |
 | 6 | Food Map: capture→unresolved→user-confirmed pin; place provider seam unwired by design | ✅ DONE (51/51 tests) |
 | 7 | Life Ledger + fitness (UTC-safe durations, workout sets, CSV export, last-workout lookup) | ✅ DONE (56/56 tests) |
-| 8 | Form Assistant | 🔜 NEXT |
-| 9 | Skill Studio | ⬜ |
+| 8 | Form Assistant: profile vault w/ sensitivity, two approval gates (fill/submit), recipe fingerprinting, mock automation seam | ✅ DONE (58/58 tests) |
+| 9 | Skill Studio | 🔜 NEXT |
 | 10 | Audio brief | ⬜ |
 | 11 | WeChat adapter (feature-flagged, disabled by default) | ⬜ |
 
@@ -138,6 +138,7 @@ user-input point). Phase 11 WeChat stays feature-flagged OFF.
 ## Definition of done reminder
 
 MVP = PRD §18. Do not declare success while any P0 slice is mocked that could run for real locally.
+
 
 
 

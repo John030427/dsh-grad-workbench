@@ -289,6 +289,33 @@ CREATE TABLE IF NOT EXISTS fitness_sets (
 CREATE INDEX IF NOT EXISTS idx_fitness_sets_entry ON fitness_sets(ledger_entry_id);
 `,
   },
+  {
+    version: 7,
+    name: 'forms',
+    sql: `
+CREATE TABLE IF NOT EXISTS form_profile_fields (
+  id TEXT PRIMARY KEY,
+  field_key TEXT NOT NULL UNIQUE,
+  label TEXT NOT NULL,
+  value TEXT NOT NULL,
+  sensitivity TEXT NOT NULL DEFAULT 'normal',
+  user_confirmed INTEGER NOT NULL DEFAULT 0,
+  updated_at TEXT NOT NULL,
+  deleted_at TEXT
+);
+
+CREATE TABLE IF NOT EXISTS form_recipes (
+  id TEXT PRIMARY KEY,
+  url_pattern TEXT NOT NULL UNIQUE,
+  title TEXT,
+  dom_fingerprint TEXT NOT NULL,
+  field_map TEXT NOT NULL DEFAULT '{}',
+  last_success_at TEXT,
+  created_at TEXT NOT NULL,
+  deleted_at TEXT
+);
+`,
+  },
 ]
 
 export interface OpenDatabaseOptions {

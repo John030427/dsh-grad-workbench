@@ -8,6 +8,7 @@ import { MemoryService } from './memory-service.ts'
 import { CommunicationService } from './communication-service.ts'
 import { FoodService } from './food-service.ts'
 import { LedgerService } from './ledger-service.ts'
+import { FormService } from './form-service.ts'
 import { ResearchService } from '../research/index.ts'
 import { ConnectorRegistry } from '../connectors/registry.ts'
 import { FeishuCliConnector } from '../connectors/feishu.ts'
@@ -22,6 +23,7 @@ export interface HostServices {
   communication: CommunicationService
   food: FoodService
   ledger: LedgerService
+  forms: FormService
   research: ResearchService
   connectors: ConnectorRegistry
   close(): void
@@ -38,6 +40,7 @@ export function buildServices(layout: DataLayout): HostServices {
   const communication = new CommunicationService(artifacts, memory)
   const food = new FoodService(db)
   const ledger = new LedgerService(db)
+  const forms = new FormService(db)
   const research = new ResearchService(db, layout, artifacts)
 
   const connectors = new ConnectorRegistry()
@@ -53,6 +56,7 @@ export function buildServices(layout: DataLayout): HostServices {
     communication,
     food,
     ledger,
+    forms,
     research,
     connectors,
     close() {
