@@ -42,8 +42,8 @@
 | 2 | Memory v1 (FTS5, scopes, supersession, sensitivity, candidates) + Memory Center | ✅ DONE |
 | 3 | Research Radar: providers → dedup → cited synthesis → UI (golden slice LIVE) | ✅ DONE (39/39 tests) |
 | 4 | Feishu CLI connector behind approval (mock-executor tested; real CLI install pending credentials) | ✅ DONE (44/44 tests) |
-| 5 | Communication assistant | 🔜 NEXT |
-| 6 | Food Map | ⬜ |
+| 5 | Communication assistant: understand/draft tools, placeholders over invented progress, drafts as artifacts | ✅ DONE (48/48 tests) |
+| 6 | Food Map | 🔜 NEXT |
 | 7 | Life Ledger + fitness | ⬜ |
 | 8 | Form Assistant | ⬜ |
 | 9 | Skill Studio | ⬜ |
@@ -136,4 +136,5 @@ point). Phase 11 WeChat stays feature-flagged OFF.
 ## Definition of done reminder
 
 MVP = PRD §18. Do not declare success while any P0 slice is mocked that could run for real locally.
+
 

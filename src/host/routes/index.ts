@@ -221,6 +221,28 @@ export function makeRoutes(deps: RouteDeps): WebRoute[] {
       })
     })),
 
+    // ── communication ────────────────────────────────────────────────────────
+    exact(`${API_PREFIX}/communication/understand`, routeErrors(async (req, res) => {
+      if (req.method !== 'POST') return void json(res, 405, { ok: false, error: 'method-not-allowed' })
+      const body = (await readJsonBody(req)) as { text?: string }
+      if (!body.text) return void json(res, 400, { ok: false, error: 'text-required' })
+      json(res, 200, { ok: true, understanding: services.communication.understand(body.text) })
+    })),
+    exact(`${API_PREFIX}/communication/draft`, routeErrors(async (req, res) => {
+      if (req.method !== 'POST') return void json(res, 405, { ok: false, error: 'method-not-allowed' })
+      const body = (await readJsonBody(req)) as { originalText?: string; myUpdate?: string }
+      if (!body.originalText) return void json(res, 400, { ok: false, error: 'originalText-required' })
+      const result = services.communication.draft({
+        originalText: body.originalText,
+        userFacts: body.myUpdate,
+      })
+      const saved = services.communication.saveDraft({
+        originalText: body.originalText,
+        markdown: result.drafts[0]!.markdown,
+      })
+      json(res, 200, { ok: true, drafts: result.drafts, contextUsed: result.contextUsed, artifactId: saved.artifactId })
+    })),
+
     // ── memory ───────────────────────────────────────────────────────────────
     exact(`${API_PREFIX}/memory`, routeErrors(async (req, res) => {
       if (req.method === 'GET') {

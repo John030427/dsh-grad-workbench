@@ -145,7 +145,7 @@ type PageId = 'home' | 'research' | 'communication' | 'life' | 'automation' | 'm
 const NAV: Array<{ id: PageId; label: string; enabled: boolean }> = [
   { id: 'home', label: '🏠 Home', enabled: true },
   { id: 'research', label: '🔬 Research', enabled: true },
-  { id: 'communication', label: '💬 Communication', enabled: false },
+  { id: 'communication', label: '💬 Communication', enabled: true },
   { id: 'life', label: '🍜 Life', enabled: false },
   { id: 'automation', label: '⚙️ Automation', enabled: true },
   { id: 'memory', label: '🧠 Memory', enabled: true },
@@ -154,9 +154,133 @@ const NAV: Array<{ id: PageId; label: string; enabled: boolean }> = [
 ]
 
 const PLACEHOLDER: Partial<Record<PageId, { title: string; phase: number; desc: string }>> = {
-  communication: { title: 'Communication', phase: 5, desc: 'Advisor message understanding and reply drafting. Drafts only until approved.' },
   life: { title: 'Life', phase: 6, desc: 'Food Map, fitness log, volunteer/activity ledger.' },
   settings: { title: 'Settings', phase: 1, desc: 'Workbench preferences, data location, memory write policy.' },
+}
+
+interface UnderstandingInfo {
+  relationship: string
+  scenario: string
+  intent: string
+  risk: string
+  coreDemand: string
+  keyPoints: string[]
+  commitments: Array<{ what: string; due?: string }>
+}
+
+function CommunicationPage(): ReactElement {
+  const [originalText, setOriginalText] = useState('')
+  const [myUpdate, setMyUpdate] = useState('')
+  const [understanding, setUnderstanding] = useState<UnderstandingInfo | null>(null)
+  const [drafts, setDrafts] = useState<Array<{ tone: string; markdown: string }>>([])
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const analyze = async () => {
+    if (!originalText.trim()) return
+    setBusy(true)
+    setError(null)
+    try {
+      const d = await post<{ understanding: UnderstandingInfo }>('/communication/understand', { text: originalText })
+      setUnderstanding(d.understanding)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const draft = async () => {
+    if (!originalText.trim()) return
+    setBusy(true)
+    setError(null)
+    try {
+      const d = await post<{ drafts: Array<{ tone: string; markdown: string }> }>('/communication/draft', {
+        originalText: originalText,
+        ...(myUpdate.trim() ? { myUpdate: myUpdate } : {}),
+      })
+      setDrafts(d.drafts)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const copyDraft = (text: string) => {
+    void navigator.clipboard?.writeText(text).catch(() => {})
+  }
+
+  return (
+    <div>
+      <div className="gwb-card">
+        <h3>Advisor message assistant</h3>
+        <p className="gwb-muted">理解 → 起草。草稿仅保存在本地；发送永远需要通过连接器的审批流程。</p>
+        <textarea
+          className="gwb-input"
+          rows={4}
+          placeholder="Paste the advisor/teacher message here…"
+          value={originalText}
+          onChange={(e) => setOriginalText(e.target.value)}
+        />
+        <div style={{ marginTop: 8 }}>
+          <button type="button" className="gwb-btn primary" disabled={busy || !originalText.trim()} onClick={analyze}>
+            Understand
+          </button>
+        </div>
+      </div>
+
+      {understanding ? (
+        <div className="gwb-card">
+          <h3>Understanding</h3>
+          <p>
+            <span className="gwb-pill">{understanding.relationship}</span>{' '}
+            <span className="gwb-pill">{understanding.scenario}</span>{' '}
+            <span className="gwb-pill">{understanding.intent}</span>{' '}
+            <span className={`gwb-pill ${understanding.risk === 'high' ? 'gwb-bad' : ''}`}>risk: {understanding.risk}</span>
+          </p>
+          <p>{understanding.coreDemand}</p>
+          {understanding.commitments.length > 0 ? (
+            <>
+              <h3 style={{ marginTop: 10 }}>Commitments / deadlines detected</h3>
+              {understanding.commitments.map((c, i) => (
+                <p key={i}>
+                  • {c.what} {c.due ? <span className="gwb-warn">(due: {c.due})</span> : null}
+                </p>
+              ))}
+            </>
+          ) : null}
+          <textarea
+            className="gwb-input"
+            style={{ marginTop: 8 }}
+            rows={2}
+            placeholder="你实际完成的事项（草稿只引用你提供的事实，绝不编造进度）"
+            value={myUpdate}
+            onChange={(e) => setMyUpdate(e.target.value)}
+          />
+          <div style={{ marginTop: 8 }}>
+            <button type="button" className="gwb-btn primary" disabled={busy} onClick={draft}>
+              Draft replies
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      {drafts.map((d) => (
+        <div key={d.tone} className="gwb-card">
+          <h3>
+            Draft — {d.tone}{' '}
+            <button type="button" className="gwb-btn" style={{ float: 'right' }} onClick={() => copyDraft(d.markdown)}>
+              Copy
+            </button>
+          </h3>
+          <pre className="gwb-mono" style={{ whiteSpace: 'pre-wrap' }}>{d.markdown}</pre>
+        </div>
+      ))}
+
+      {error ? <div className="gwb-card"><p className="gwb-bad">{error}</p></div> : null}
+    </div>
+  )
 }
 
 interface ConnectorInfo {
@@ -651,6 +775,8 @@ export function GradWorkbench(): ReactElement {
             <MemoryPage />
           ) : page === 'connections' ? (
             <ConnectionsPage />
+          ) : page === 'communication' ? (
+            <CommunicationPage />
           ) : placeholder ? (
             <PlaceholderPage page={placeholder} />
           ) : null}
