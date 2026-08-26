@@ -1,5 +1,5 @@
 node_modules/
-lib/
 *.log
 .tmp/
 coverage/
+packages/*/node_modules/

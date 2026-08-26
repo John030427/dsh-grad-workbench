@@ -1,0 +1,16 @@
+{
+  "name": "dsh-profile-grad",
+  "private": true,
+  "dsh": {
+    "profile": {
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-ai/dsh-web-app",
+        "@grad/grad-suite"
+      ]
+    }
+  },
+  "dependencies": {
+    "@grad/grad-suite": "link:__GRAD_REPO__/packages/grad-suite"
+  }
+}

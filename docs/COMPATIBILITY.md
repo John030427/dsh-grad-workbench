@@ -109,6 +109,17 @@ community example). Re-verify after any DSH upgrade.
 | `~/.dsh/grad-workbench/` data root | confirmed writable convention (`~/.dsh/plugins/...` precedent) | use it, override with `GRAD_WORKBENCH_HOME` env for tests |
 | separate `grad` profile via CLI add | CLI add can trip pnpm policy | create profile dir manually + junction |
 
+## Product shell architecture (grad-shell, mirrors mathmodel-shell)
+
+- The grad product profile boots `@grad/grad-suite`, whose bundle patch inserts
+  `grad-shell` BEFORE the domain and disables `ui-layout`. grad-shell then owns
+  the single `root` slot (nav | workbench | narrow native Agent column) and
+  sets `window.__GRAD_SHELL_HOST__` at module evaluation.
+- The domain client reads that flag in apply(): under a shell host it skips the
+  legacy conversation.view / sidebar.footer.action / shell.overlay
+  registrations (no duplicate 硕博工作台 surface); under stock web profile it
+  keeps them all.
+
 ## IM channel integration (dsh-im) — verified live
 
 - `@xmanrui/dsh-im@2.1.0` runs in the WEB profile and bridges Feishu (+8 other

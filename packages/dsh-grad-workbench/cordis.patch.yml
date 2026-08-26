@@ -1,0 +1,6 @@
+# @grad/dsh-grad-workbench — standalone host+client insertion used when the
+# package is installed WITHOUT the product suite (web/headless smoke profiles).
+# The grad product profile composes it through @grad/grad-suite instead.
+- insert:
+    - id: dsh-grad-workbench
+      name: '@grad/dsh-grad-workbench'

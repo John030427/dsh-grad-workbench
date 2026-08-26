@@ -1,0 +1,17 @@
+# Graduate OS Suite — the single product bundle for the grad profile.
+#
+# Composition contract (mirrors math-modeling-workbench's mathmodel-suite):
+# - ui-layout disabled: grad-shell owns `root`.
+# - shell entry inserted BEFORE dsh-grad-workbench: the shell module sets
+#   window.__GRAD_SHELL_HOST__ at evaluation time; dsh-grad-workbench reads it
+#   at apply() to skip compat registrations (no duplicate「硕博工作台」tab).
+# Product profile bundles: @deepseek-ai/dsh-base, @deepseek-ai/dsh-web-app,
+# @grad/grad-suite. The web profile must NEVER take this bundle.
+- insert:
+    - id: grad-shell
+      name: '@grad/grad-shell'
+    - id: dsh-grad-workbench
+      name: '@grad/dsh-grad-workbench'
+
+- id: ui-layout
+  disabled: true

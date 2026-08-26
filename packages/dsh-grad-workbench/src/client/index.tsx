@@ -1,9 +1,12 @@
 /**
- * dsh-grad-workbench client entry.
- * Official DSH UI contracts only (verified rc.2 — see docs/COMPATIBILITY.md):
- * - primary: conversation.view tab「硕博工作台」
- * - sidebar.footer.action: one button that switches to the workbench view
- * - shell.overlay: fallback drawer when session tabs are unavailable
+ * dsh-grad-workbench client entry (domain plugin).
+ *
+ * Compat gate (mirrors dsh-mathmodeling under mathmodel-shell):
+ * - Under the dedicated grad profile, grad-shell sets window.__GRAD_SHELL_HOST__
+ *   at module evaluation; this plugin then SKIPS the legacy chat-tab/footer/
+ *   overlay registrations to avoid a duplicate「硕博工作台」surface.
+ * - Under the stock web profile (no shell host) the legacy surfaces remain:
+ *   conversation.view tab · sidebar.footer.action · shell.overlay fallback.
  */
 
 import { useEffect, useState } from 'react'
@@ -13,6 +16,14 @@ import { GradWorkbench } from './app/GradWorkbench.tsx'
 
 const VIEW_ID = 'grad-workbench'
 const OVERLAY_EVENT = 'dsh-grad-workbench:overlay'
+
+function isShellHost(): boolean {
+  try {
+    return (window as unknown as Record<string, unknown>).__GRAD_SHELL_HOST__ === true
+  } catch {
+    return false
+  }
+}
 
 type SessionHelpers = {
   sessionId?: string
@@ -128,6 +139,11 @@ function OverlayHost(): ReactElement {
 export const inject = ['slots', 'sessions']
 
 export function apply(ctx: GradClientContext): void {
+  if (isShellHost()) {
+    // Dedicated grad-shell owns the whole root; nothing to register here.
+    return
+  }
+
   // Primary surface: session view tab.
   try {
     ctx.slots.inject('conversation.view', () =>

@@ -1,7 +1,7 @@
 {
-  "name": "dsh-grad-workbench",
+  "name": "@grad/dsh-grad-workbench",
   "version": "0.1.0",
-  "description": "Graduate OS / 硕博工作台 — local-first DeepSeek Harness workbench plugin (Research / Communication / Life / Automation)",
+  "description": "Graduate OS / 硕博工作台 — local-first DeepSeek Harness workbench domain plugin (Research / Communication / Life / Automation)",
   "private": true,
   "type": "module",
   "main": "./lib/index.js",

@@ -1,0 +1,3 @@
+# Graduate OS profile layer — composition owned by @grad/grad-suite.
+# Keep this profile layer minimal; product intent lives in the suite.
+[]

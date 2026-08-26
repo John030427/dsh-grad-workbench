@@ -1,5 +1,0 @@
-# dsh-grad-workbench — inserts host + client halves into the grad profile.
-# The web profile must NEVER take this bundle (isolated development profile).
-- insert:
-    - id: dsh-grad-workbench
-      name: dsh-grad-workbench

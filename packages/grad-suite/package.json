@@ -1,0 +1,28 @@
+{
+  "name": "@grad/grad-suite",
+  "version": "0.1.0",
+  "description": "Graduate OS Harness product bundle — composes grad-shell + dsh-grad-workbench for the dedicated grad profile",
+  "private": true,
+  "type": "module",
+  "main": "./lib/index.js",
+  "exports": {
+    ".": { "default": "./lib/index.js" },
+    "./package.json": "./package.json"
+  },
+  "dependencies": {
+    "@grad/dsh-grad-workbench": "link:../dsh-grad-workbench",
+    "@grad/grad-shell": "link:../grad-shell"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": ">=4.0.0-rc <5"
+  },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/cordis": { "optional": true }
+  },
+  "scripts": {
+    "test": "node --test tests/*.test.mjs"
+  },
+  "dsh": {
+    "bundle": { "patch": "./cordis.patch.yml" }
+  }
+}
