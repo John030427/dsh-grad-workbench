@@ -33,6 +33,15 @@
   ToolDefinitions; client is an esbuild CJS bundle wrapped for `window.__ModuleLoader__`.
 - Tests run via `node --test` against built `lib/` plus direct TS imports (type stripping).
 
+## IM integration (dsh-im, live)
+
+The user's web profile runs `@xmanrui/dsh-im@2.1.0` with Feishu connected.
+dsh-grad-workbench is now ALSO hot-installed into that profile (loader entry
+`5ad9fc6b`, health verified on :3080) so Feishu messages reach an agent with
+every `grad_*` tool. Outbound publishes remain approval-gated via the
+connector layer; dsh-im exposes management RPC only (no third-party send API).
+Multi-process DB access (3080 + 3081) rides on SQLite WAL.
+
 ## Phase status
 
 | Phase | Scope | Status |

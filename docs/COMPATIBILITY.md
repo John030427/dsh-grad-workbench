@@ -109,6 +109,25 @@ community example). Re-verify after any DSH upgrade.
 | `~/.dsh/grad-workbench/` data root | confirmed writable convention (`~/.dsh/plugins/...` precedent) | use it, override with `GRAD_WORKBENCH_HOME` env for tests |
 | separate `grad` profile via CLI add | CLI add can trip pnpm policy | create profile dir manually + junction |
 
+## IM channel integration (dsh-im) — verified live
+
+- `@xmanrui/dsh-im@2.1.0` runs in the WEB profile and bridges Feishu (+8 other
+  channels) INBOUND into DSH agent sessions; replies stream back via the bot
+  (Feishu interactive cards).
+- Its host half exposes MANAGEMENT RPC only (`connection.status`,
+  `provision.begin`, workspace/preset binding…) — no third-party
+  "send to arbitrary chat" API. Verified from `plugin-src/host/channels/*`.
+- Integration model therefore: install dsh-grad-workbench into the SAME
+  profile as dsh-im (done on this machine via super-injector
+  `dev_install_package`, loader entry `5ad9fc6b`, hot-loaded without restart).
+  Feishu messages then reach an agent holding every `grad_*` tool, so
+  Graduate OS is operable end-to-end from IM.
+- Outbound proactive publishes stay approval-gated through the Connector layer
+  (CLI transport when installed; im.send actions require explicit approval).
+- Multi-process note: grad (3081) and web (3080) instances share
+  `~/.dsh/grad-workbench/grad.db`; SQLite WAL + `busy_timeout=5000` covers
+  normal concurrent use.
+
 ## Known risks
 
 - DSH moves fast; re-run recon after upgrades (`docs/COMPATIBILITY.md` update +
